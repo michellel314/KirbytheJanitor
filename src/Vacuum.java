@@ -15,4 +15,8 @@ public class Vacuum {
         }
         return false;
     }
+
+    public int getTier(){
+        return tier;
+    }
 }
