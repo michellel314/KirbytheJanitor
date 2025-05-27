@@ -9,7 +9,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 
 public class Panel extends JPanel implements Runnable, KeyListener{
-    private Thread gameThread;
     private BufferedImage background;
     private int backgroundX;
     private final int WIDTH = 500;
