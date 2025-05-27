@@ -1,18 +1,19 @@
 import javax.imageio.ImageIO;
-import javax.swing.JPanel;
+import javax.swing.*;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Color;
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 
 public class Panel extends JPanel implements Runnable, KeyListener{
     private BufferedImage background;
     private int backgroundX;
-    private final int WIDTH = 500;
-    private final int HEIGHT = 500;
+    private final int WIDTH = 800;
+    private final int HEIGHT = 600;
     private Kirby kirby;
     private boolean up;
     private boolean down;
@@ -20,16 +21,22 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     private boolean right;
 
     public Panel(){
+        kirby = new Kirby(100, 300);
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);
         addKeyListener(this);
 
         try {
-            background = ImageIO.read(getClass().getResource("/src/Visuals/game_background_4.png"));
+            background = ImageIO.read(new File(("src\\Visuals\\Dreamscape.jpg")));
         } catch (IOException e){
             e.printStackTrace();
         }
         backgroundX = 0;
+        Timer timer = new Timer(16, e->{
+            update();
+            repaint();
+        });
+        timer.start();
     }
 
     public void update(){
@@ -63,10 +70,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         int bgWidth = background.getWidth();
         int numImages = WIDTH / bgWidth + 2; // draw enough to cover the screen
 
-        for (int i = 0; i < numImages; i++) {
-            g.drawImage(background, backgroundX + i * bgWidth, 0, null);
-        }
-
+        g.drawImage(background, 0, 0, null);
         kirby.draw(g);
     }
     @Override
