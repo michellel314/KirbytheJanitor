@@ -6,6 +6,7 @@ import javax.imageio.ImageIO;
 import java.util.ArrayList;
 
 public class Kirby {
+    private int health;
     private int x;
     private int y;
     private int speed = 4;
@@ -21,6 +22,7 @@ public class Kirby {
     private long frameDelay = 120;
 
     public Kirby(int x, int y){
+        health = 100;
         this.x = x;
         this.y = y;
         vacuum = new Vacuum (1);

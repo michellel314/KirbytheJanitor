@@ -11,6 +11,7 @@ import java.io.IOException;
 
 public class Panel extends JPanel implements Runnable, KeyListener{
     private BufferedImage background;
+    private BufferedImage homescreen;
     private int backgroundX;
     private int cameraX = 0;
     private final int WIDTH = 800;
@@ -29,6 +30,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         addKeyListener(this);
 
         try {
+            homescreen = ImageIO.read(new File("src/Visuals/HOMESCREEN.PNG"));
             background = ImageIO.read(new File(("src/Visuals/Dreamscape.jpg")));
         } catch (IOException e){
             e.printStackTrace();
@@ -65,6 +67,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     @Override
     public void paintComponent(Graphics g){
         super.paintComponent(g);
+        g.drawImage(homescreen, 0, 0, null);
         int bgWidth = background.getWidth();
 
         for(int i = -1; i < getWidth() / bgWidth + 2; i++){
