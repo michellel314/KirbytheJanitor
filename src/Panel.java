@@ -12,6 +12,7 @@ import java.io.IOException;
 public class Panel extends JPanel implements Runnable, KeyListener{
     private BufferedImage background;
     private int backgroundX;
+    private int cameraX = 0;
     private final int WIDTH = 800;
     private final int HEIGHT = 600;
     private Kirby kirby;
@@ -21,18 +22,19 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     private boolean right;
 
     public Panel(){
-        kirby = new Kirby(100, 300);
+        kirby = new Kirby(200, 500);
+        kirby.loadWalkFrame("src/Visuals", 4);
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);
         addKeyListener(this);
 
         try {
-            background = ImageIO.read(new File(("src\\Visuals\\Dreamscape.jpg")));
+            background = ImageIO.read(new File(("src/Visuals/Dreamscape.jpg")));
         } catch (IOException e){
             e.printStackTrace();
         }
         backgroundX = 0;
-        Timer timer = new Timer(16, e->{
+        Timer timer = new Timer(13, e->{
             update();
             repaint();
         });
@@ -43,35 +45,38 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         int dx = 0;
         int dy = 0;
         if (left) {
-            dx = -2;
+            dx = -4;
+        } else if (right) {
+            dx =  4;
         }
-        if (right) {
-            dx =  2;
-        }
-
-        if (dx != 0) {
-            backgroundX -= dx;
-
-            // Optional: loop the background when scrolling
-            int bgWidth = background.getWidth();
-            if (backgroundX <= -bgWidth) {
-                backgroundX += bgWidth;
-            }
-            if (backgroundX >= bgWidth) {
-                backgroundX -= bgWidth;
-            }
+        kirby.move(dx, 0);
+        int kirbyX = kirby.getX();
+        int leftBound = 200;
+        int rightBound = 600;
+        if (kirbyX < leftBound) {
+            cameraX -= leftBound - kirbyX;
+            kirby.setPosition(leftBound, kirby.getY());
+        } else if (kirbyX > rightBound){
+            cameraX += kirbyX - rightBound;
+            kirby.setPosition(rightBound, kirby.getY());
         }
 
-        kirby.move(dx, dy);
     }
     @Override
     public void paintComponent(Graphics g){
         super.paintComponent(g);
         int bgWidth = background.getWidth();
-        int numImages = WIDTH / bgWidth + 2; // draw enough to cover the screen
 
-        g.drawImage(background, 0, 0, null);
+        for(int i = -1; i < getWidth() / bgWidth + 2; i++){
+            int xPos = i * bgWidth - cameraX % bgWidth;
+            g.drawImage(background, xPos, 0, null);
+        }
         kirby.draw(g);
+    }
+
+    public void resetGame(){
+        cameraX = 0;
+        kirby = new Kirby(200, 500);
     }
     @Override
     public void keyTyped(KeyEvent e) {

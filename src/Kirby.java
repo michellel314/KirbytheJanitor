@@ -33,9 +33,9 @@ public class Kirby {
     public void loadWalkFrame(String folderpath, int frameCount){
        walkFrames.clear();
        for(int i = 0; i < frameCount; i++){
-           String fileName = folderpath + "src\\Visuals" + "\\tile00" + i + ".png";
+           String fileName = folderpath + "/tile00" + i + ".png";
            try{
-               BufferedImage frame = ImageIO.read(getClass().getResource(fileName));
+               BufferedImage frame = ImageIO.read(new File(fileName));
                walkFrames.add(frame);
            } catch (IOException e){
                System.out.println(e.getMessage());
@@ -46,19 +46,37 @@ public class Kirby {
         x += dx;
         y += dy;
 
-        if (dx < 0) {
-            facingRight = false;
+        // Change direction Kirby is facing
+
+        if (x < 0) {
+            x = 0;
+        }
+        if (x > 800 - getCurrentFrameWidth()) { // Screen width - Kirby sprite width
+            x = 800 - getCurrentFrameWidth();
         }
 
-        if (dx > 0) {
+        if (dx < 0) {
+            facingRight = false;
+        } else if (dx > 0) {
             facingRight = true;
         }
+
+        // If Kirby is moving
         if (dx != 0 || dy != 0) {
-            long now = System.currentTimeMillis();
-            if (now - lastFrameTime >= frameDelay) {
-                frameIndex = (frameIndex + 1) % walkFrames.size();
-                lastFrameTime = now;
+            frameCounter++;
+
+            // Every 10 updates, change to the next walking frame (1 to 3)
+            if (frameCounter >= 10) {
+                frameIndex++;
+                if (frameIndex > 3) {
+                    frameIndex = 1; // loop back to first walking frame
+                }
+                frameCounter = 0;
             }
+        } else {
+            // Kirby is not moving — show standing frame
+            frameIndex = 0;
+            frameCounter = 0;
         }
     }
 
@@ -102,5 +120,10 @@ public class Kirby {
         y = newY;
     }
 
-
+    private int getCurrentFrameWidth() {
+        if (!walkFrames.isEmpty()) {
+            return walkFrames.get(frameIndex).getWidth();
+        }
+        return 0;
+    }
 }
