@@ -21,13 +21,27 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     private boolean down;
     private boolean left;
     private boolean right;
-
+    private String gameState = "HOME";
+    private JButton start;
     public Panel(){
         kirby = new Kirby(200, 500);
         kirby.loadWalkFrame("src/Visuals", 4);
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);
         addKeyListener(this);
+
+        setLayout(null); // Let us manually place components
+
+        start = new JButton("Start Game");
+        start.setBounds(325, 400, 150, 50); // x, y, width, height
+        add(start);
+
+        start.addActionListener(e -> {
+            remove(start);     // Hide the button
+            gameState = "PLAYING";   // Switch game state
+            resetGame();             // Reset Kirby & background
+            requestFocusInWindow();  // Make sure keys work again
+        });
 
         try {
             homescreen = ImageIO.read(new File("src/Visuals/HOMESCREEN.PNG"));
@@ -41,6 +55,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
             repaint();
         });
         timer.start();
+
     }
 
     public void update(){
@@ -67,19 +82,21 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     @Override
     public void paintComponent(Graphics g){
         super.paintComponent(g);
-        g.drawImage(homescreen, 0, 0, null);
-        int bgWidth = background.getWidth();
-
-        for(int i = -1; i < getWidth() / bgWidth + 2; i++){
-            int xPos = i * bgWidth - cameraX % bgWidth;
-            g.drawImage(background, xPos, 0, null);
+        if (gameState.equals("HOME")) {
+            g.drawImage(homescreen, 0, 0, null);
+        } else if (gameState.equals("PLAYING")) {
+            int bgWidth = background.getWidth();
+            for (int i = -1; i < getWidth() / bgWidth + 2; i++) {
+                int xPos = i * bgWidth - cameraX % bgWidth;
+                g.drawImage(background, xPos, 0, null);
+            }
+            kirby.draw(g);
         }
-        kirby.draw(g);
     }
 
     public void resetGame(){
         cameraX = 0;
-        kirby = new Kirby(200, 500);
+        kirby.setPosition(200, 500);
     }
     @Override
     public void keyTyped(KeyEvent e) {
