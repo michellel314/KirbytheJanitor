@@ -18,8 +18,11 @@ public class Kirby {
     private int currentFrame;
     private int frameCounter;
     private Vacuum vacuum;
-    private long lastFrameTime;
-    private long frameDelay = 120;
+    private int velocityY = 0;
+    private boolean isJumping = false;
+    private final int GROUND_Y = 300;
+    private final int JUMP_STRENGTH = -12;
+    private final int GRAVITY = 1;
 
     public Kirby(int x, int y){
         health = 100;
@@ -28,7 +31,6 @@ public class Kirby {
         vacuum = new Vacuum (1);
         score = 0;
         frameIndex = 0;
-        lastFrameTime = System.currentTimeMillis();
         walkFrames = new ArrayList<>();
     }
 
@@ -80,6 +82,15 @@ public class Kirby {
             frameIndex = 0;
             frameCounter = 0;
         }
+        if(y < GROUND_Y || isJumping){
+            velocityY += GRAVITY;
+            y += velocityY;
+            if (y >= velocityY){
+                y = GROUND_Y;
+                isJumping = false;
+                velocityY = 0;
+            }
+        }
     }
 
     public void draw(Graphics g){
@@ -105,6 +116,12 @@ public class Kirby {
         }
     }
 
+    public void jump(){
+        if(!isJumping){
+            isJumping = true;
+            velocityY = JUMP_STRENGTH;
+        }
+    }
     public int getX(){
         return x;
     }
@@ -115,6 +132,10 @@ public class Kirby {
 
     public int getScore(){
         return score;
+    }
+
+    public boolean isJumping(){
+        return isJumping;
     }
 
     public void setPosition(int newX, int newY){

@@ -1,15 +1,16 @@
 import javax.imageio.ImageIO;
 import javax.swing.*;
-import java.awt.Dimension;
-import java.awt.Graphics;
-import java.awt.Color;
+import java.awt.*;
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 
 public class Panel extends JPanel implements Runnable, KeyListener{
+    private ArrayList<GoldenTrash> trashList = new ArrayList<>();
+    private BufferedImage kirbyK;
     private BufferedImage background;
     private BufferedImage homescreen;
     private int backgroundX;
@@ -33,7 +34,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         setLayout(null); // Let us manually place components
 
         start = new JButton("Start Game");
-        start.setBounds(325, 400, 150, 50); // x, y, width, height
+        start.setBounds(310, 275, 150, 50); // x, y, width, height
         add(start);
 
         start.addActionListener(e -> {
@@ -46,6 +47,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         try {
             homescreen = ImageIO.read(new File("src/Visuals/HOMESCREEN.PNG"));
             background = ImageIO.read(new File(("src/Visuals/Dreamscape.jpg")));
+            kirbyK = ImageIO.read(new File("src/Visuals/tile000.png"));
         } catch (IOException e){
             e.printStackTrace();
         }
@@ -84,11 +86,18 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         super.paintComponent(g);
         if (gameState.equals("HOME")) {
             g.drawImage(homescreen, 0, 0, null);
+            g.setFont(new Font("Sansserif", Font.BOLD, 30));
+            g.setColor(Color.pink);
+            g.drawString("Kirby the Janitor", 270, 200);
+            g.drawImage(kirbyK, 270, 150, null);
         } else if (gameState.equals("PLAYING")) {
             int bgWidth = background.getWidth();
             for (int i = -1; i < getWidth() / bgWidth + 2; i++) {
                 int xPos = i * bgWidth - cameraX % bgWidth;
                 g.drawImage(background, xPos, 0, null);
+            }
+            for (GoldenTrash t : trashList){
+                t.draw(g);
             }
             kirby.draw(g);
         }
@@ -97,6 +106,13 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     public void resetGame(){
         cameraX = 0;
         kirby.setPosition(200, 500);
+        trashList.clear();
+
+        for(int i = 0; i < 5; i++){
+            int x = (int) (Math.random() * 700 + 50);
+            int y = 400;
+            trashList.add(new GoldenTrash(x, y));
+        }
     }
     @Override
     public void keyTyped(KeyEvent e) {
@@ -107,8 +123,9 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
 
-        if(key == KeyEvent.VK_W){
+        if(key == KeyEvent.VK_W && !kirby.isJumping()){
             up = true;
+            kirby.jump();
         }
         if(key == KeyEvent.VK_S){
             down = true;
