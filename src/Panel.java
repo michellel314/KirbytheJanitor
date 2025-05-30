@@ -22,6 +22,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     private boolean down;
     private boolean left;
     private boolean right;
+    private boolean backgroundScrolling = false;
     private String gameState = "HOME";
     private JButton start;
     public Panel(){
@@ -68,6 +69,18 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         } else if (right) {
             dx =  4;
         }
+
+        if(kirby.getX() < 400 || backgroundScrolling == false){
+            kirby.move(dx, 0);
+            if(kirby.getX() > 400){
+                backgroundScrolling = true;
+            }
+        } else {
+            backgroundX -= dx;
+            for(GoldenTrash t : trashList){
+                t.scrollwithBackground(dx);
+            }
+        }
         kirby.move(dx, 0);
         int kirbyX = kirby.getX();
         int leftBound = 200;
@@ -97,7 +110,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
                 g.drawImage(background, xPos, 0, null);
             }
             for (GoldenTrash t : trashList){
-                t.draw(g);
+               t.update();
             }
             kirby.draw(g);
         }
@@ -113,6 +126,10 @@ public class Panel extends JPanel implements Runnable, KeyListener{
             int y = 400;
             trashList.add(new GoldenTrash(x, y));
         }
+    }
+
+    public void spawnTrash(){
+
     }
     @Override
     public void keyTyped(KeyEvent e) {

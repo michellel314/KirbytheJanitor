@@ -17,9 +17,15 @@ public class GoldenTrash {
             e.printStackTrace();
         }
     }
+    public void update(){
+        x -= 2;
+    }
+    public void draw(Graphics g, int cameraX){
+        g.drawImage(image, x - cameraX, y, null);
+    }
 
-    public void draw(Graphics g){
-        g.drawImage(image, x, y, null);
+    public void scrollwithBackground(int dx){
+        x -= dx;
     }
 
     public int getX(){
