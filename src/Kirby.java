@@ -14,6 +14,8 @@ public class Kirby {
     private boolean facingRight;
     private boolean facingLeft;
     private int score;
+    private String animationState = "walk";
+    private ArrayList<BufferedImage> eating;
     private ArrayList<BufferedImage> walkFrames;
     private int currentFrame;
     private int frameCounter;
@@ -32,9 +34,10 @@ public class Kirby {
         score = 0;
         frameIndex = 0;
         walkFrames = new ArrayList<>();
+        eating = new ArrayList<>();
     }
 
-    public void loadWalkFrame(String folderpath, int frameCount) {
+    public void loadWalkingFrames(String folderpath, int frameCount) {
         walkFrames.clear();
         for (int i = 0; i < frameCount; i++) {
             String fileName = folderpath + "/tile00" + i + ".png";
@@ -44,6 +47,27 @@ public class Kirby {
             } catch (IOException e) {
                 System.out.println(e.getMessage());
             }
+        }
+    }
+
+    public void loadEatingFrames(String folderPath, int frameCount){
+        eating.clear();
+        for(int i = 0; i < frameCount; i++){
+            String fileName = folderPath + "/tile00" + i + ".png";
+            try{
+                 BufferedImage frame = ImageIO.read(new File(fileName));
+                 eating.add(frame);
+            } catch (IOException e){
+                System.out.println(e.getMessage());
+            }
+        }
+    }
+
+    public void setAnimationState(String state) {
+        if (state.equals("walk") || state.equals("eat")) {
+            this.animationState = state;
+            frameIndex = 0;      // Reset animation to first frame
+            frameCounter = 0;    // Reset counter
         }
     }
 
@@ -67,9 +91,10 @@ public class Kirby {
         if (dx != 0 || dy != 0) {
             frameCounter++;
             if (frameCounter >= 10) {
-                frameIndex++;
-                if (frameIndex > 3) {
-                    frameIndex = 1;
+                if (animationState.equals("walk") && frameIndex >= walkFrames.size()) {
+                    frameIndex = 0;
+                } else if (animationState.equals("eat") && frameIndex >= eating.size()) {
+                    frameIndex = 0;
                 }
                 frameCounter = 0;
             }
@@ -90,8 +115,15 @@ public class Kirby {
     }
 
     public void draw(Graphics g) {
-        if (!walkFrames.isEmpty()) {
-            BufferedImage frame = walkFrames.get(frameIndex);
+        BufferedImage frame = null;
+
+        if (animationState.equals("eat") && !eating.isEmpty()) {
+            frame = eating.get(frameIndex % eating.size());
+        } else if (!walkFrames.isEmpty()) {
+            frame = walkFrames.get(frameIndex % walkFrames.size());
+        }
+
+        if (frame != null) {
             if (facingRight) {
                 g.drawImage(frame, x, y, null);
             } else {

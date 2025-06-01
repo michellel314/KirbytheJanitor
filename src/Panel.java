@@ -31,7 +31,8 @@ public class Panel extends JPanel implements Runnable, KeyListener{
 
     public Panel(){
         kirby = new Kirby(200, 500);
-        kirby.loadWalkFrame("src/Visuals", 4);
+        kirby.loadWalkingFrames("src/Visuals", 4);
+        kirby.loadEatingFrames("src/Eating_Animation", 5);
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);
         addKeyListener(this);
@@ -158,7 +159,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
 
         for(int i = 0; i < 5; i++){
             int x = (int) (Math.random() * 700 + 50);
-            int y = (int)(Math.random() * 40 + 460);
+            int y = (int)(Math.random() * 200 + 300);  // randomly vary height
             trashList.add(new GoldenTrash(x, y));
         }
     }
@@ -207,6 +208,9 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         }
         if(key == KeyEvent.VK_D){
             right = false;
+        }
+        if (key == KeyEvent.VK_E) {
+            kirby.setAnimationState("eat");
         }
     }
 
