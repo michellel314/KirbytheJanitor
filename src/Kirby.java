@@ -40,7 +40,7 @@ public class Kirby {
     public void loadWalkingFrames(String folderpath, int frameCount) {
         walkFrames.clear();
         for (int i = 0; i < frameCount; i++) {
-            String fileName = folderpath + "/tile00" + i + ".png";
+            String fileName = String.format("%s/tile%03d.png", folderpath, i);
             try {
                 BufferedImage frame = ImageIO.read(new File(fileName));
                 walkFrames.add(frame);
@@ -91,6 +91,7 @@ public class Kirby {
         if (dx != 0 || dy != 0) {
             frameCounter++;
             if (frameCounter >= 10) {
+                frameIndex++;
                 if (animationState.equals("walk") && frameIndex >= walkFrames.size()) {
                     frameIndex = 0;
                 } else if (animationState.equals("eat") && frameIndex >= eating.size()) {
