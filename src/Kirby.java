@@ -2,8 +2,8 @@ import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import javax.imageio.ImageIO;
 import java.util.ArrayList;
+import javax.imageio.ImageIO;
 
 public class Kirby {
     private int health;
@@ -14,48 +14,47 @@ public class Kirby {
     private boolean facingRight;
     private boolean facingLeft;
     private int score;
-    private ArrayList <BufferedImage> walkFrames;
+    private ArrayList<BufferedImage> walkFrames;
     private int currentFrame;
     private int frameCounter;
-    private Vacuum vacuum;
+    public Vacuum vacuum;
     private int velocityY = 0;
     private boolean isJumping = false;
     private final int GROUND_Y = 300;
     private final int JUMP_STRENGTH = -12;
     private final int GRAVITY = 1;
 
-    public Kirby(int x, int y){
+    public Kirby(int x, int y) {
         health = 100;
         this.x = x;
         this.y = y;
-        vacuum = new Vacuum (1);
+        vacuum = new Vacuum(1);
         score = 0;
         frameIndex = 0;
         walkFrames = new ArrayList<>();
     }
 
-    public void loadWalkFrame(String folderpath, int frameCount){
-       walkFrames.clear();
-       for(int i = 0; i < frameCount; i++){
-           String fileName = folderpath + "/tile00" + i + ".png";
-           try{
-               BufferedImage frame = ImageIO.read(new File(fileName));
-               walkFrames.add(frame);
-           } catch (IOException e){
-               System.out.println(e.getMessage());
-           }
-       }
+    public void loadWalkFrame(String folderpath, int frameCount) {
+        walkFrames.clear();
+        for (int i = 0; i < frameCount; i++) {
+            String fileName = folderpath + "/tile00" + i + ".png";
+            try {
+                BufferedImage frame = ImageIO.read(new File(fileName));
+                walkFrames.add(frame);
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
+            }
+        }
     }
+
     public void move(int dx, int dy) {
         x += dx;
         y += dy;
 
-        // Change direction Kirby is facing
-
         if (x < 0) {
             x = 0;
         }
-        if (x > 800 - getCurrentFrameWidth()) { // Screen width - Kirby sprite width
+        if (x > 800 - getCurrentFrameWidth()) {
             x = 800 - getCurrentFrameWidth();
         }
 
@@ -65,27 +64,24 @@ public class Kirby {
             facingRight = true;
         }
 
-        // If Kirby is moving
         if (dx != 0 || dy != 0) {
             frameCounter++;
-
-            // Every 10 updates, change to the next walking frame (1 to 3)
             if (frameCounter >= 10) {
                 frameIndex++;
                 if (frameIndex > 3) {
-                    frameIndex = 1; // loop back to first walking frame
+                    frameIndex = 1;
                 }
                 frameCounter = 0;
             }
         } else {
-            // Kirby is not moving — show standing frame
             frameIndex = 0;
             frameCounter = 0;
         }
-        if(y < GROUND_Y || isJumping){
+
+        if (y < GROUND_Y || isJumping) {
             velocityY += GRAVITY;
             y += velocityY;
-            if (y >= velocityY){
+            if (y >= GROUND_Y) {
                 y = GROUND_Y;
                 isJumping = false;
                 velocityY = 0;
@@ -93,10 +89,10 @@ public class Kirby {
         }
     }
 
-    public void draw(Graphics g){
-        if(!walkFrames.isEmpty()){
+    public void draw(Graphics g) {
+        if (!walkFrames.isEmpty()) {
             BufferedImage frame = walkFrames.get(frameIndex);
-            if(facingRight){
+            if (facingRight) {
                 g.drawImage(frame, x, y, null);
             } else {
                 g.drawImage(frame, x + frame.getWidth(), y, -frame.getWidth(), frame.getHeight(), null);
@@ -104,43 +100,60 @@ public class Kirby {
         }
     }
 
-    public void explode(){
+    public void explode() {
         System.out.println("KIRBY EXPLODED! GAME OVER");
     }
 
-    public void upgradeVacuum(){
-        if(score >= 500 && vacuum.getTier() < 3){
+    public void upgradeVacuum() {
+        if (score >= 500 && vacuum.getTier() < 3) {
             score -= 500;
             vacuum = new Vacuum(vacuum.getTier() + 1);
-            System.out.println("Vacuum upgrade to tier " + vacuum.getTier());
+            System.out.println("Vacuum upgraded to tier " + vacuum.getTier());
         }
     }
 
-    public void jump(){
-        if(!isJumping){
+    public void jump() {
+        if (!isJumping) {
             isJumping = true;
             velocityY = JUMP_STRENGTH;
         }
     }
-    public int getX(){
+
+    public int getX() {
         return x;
     }
 
-    public int getY(){
+    public int getY() {
         return y;
     }
 
-    public int getScore(){
+    public int getScore() {
         return score;
     }
 
-    public boolean isJumping(){
+    public boolean isJumping() {
         return isJumping;
     }
 
-    public void setPosition(int newX, int newY){
+    public void setPosition(int newX, int newY) {
         x = newX;
         y = newY;
+    }
+
+    public void collectTrash() {
+        score += 100;
+    }
+
+    public void takeDamage(int amount) {
+        health -= amount;
+        if (health <= 0) {
+            health = 0;
+            explode();
+        }
+    }
+
+    public int getHealth() {
+        return health;
     }
 
     private int getCurrentFrameWidth() {

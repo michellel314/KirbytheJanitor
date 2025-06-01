@@ -25,6 +25,10 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     private boolean backgroundScrolling = false;
     private String gameState = "HOME";
     private JButton start;
+    private boolean checkpointReached = false;
+    private boolean canScrollBeyondCheckpoint = false;
+    private final int requiredTrash = 5;  // Number of trash Kirby must collect before unlocking scrolling beyond checkpoint
+
     public Panel(){
         kirby = new Kirby(200, 500);
         kirby.loadWalkFrame("src/Visuals", 4);
@@ -61,39 +65,60 @@ public class Panel extends JPanel implements Runnable, KeyListener{
 
     }
 
-    public void update(){
+    public void update() {
         int dx = 0;
-        int dy = 0;
-        if (left) {
-            dx = -4;
-        } else if (right) {
-            dx =  4;
+        if (left) dx = -4;
+        else if (right) dx = 4;
+
+        // Check if Kirby has reached checkpoint position (e.g., x = 600)
+        if (!checkpointReached && kirby.getX() >= 600) {
+            checkpointReached = true;
+            backgroundScrolling = false;  // Lock scrolling when at checkpoint
         }
 
-        if(kirby.getX() < 400 || backgroundScrolling == false){
+        // Check if Kirby collected enough trash to unlock scrolling past checkpoint
+        if (checkpointReached && kirby.getScore() >= requiredTrash * 100) {
+            canScrollBeyondCheckpoint = true;
+        }
+
+        // Movement and scrolling logic
+        if (kirby.getX() < 400 || !backgroundScrolling) {
             kirby.move(dx, 0);
-            if(kirby.getX() > 400){
+            if (kirby.getX() > 400 && !checkpointReached) {
                 backgroundScrolling = true;
             }
         } else {
-            backgroundX -= dx;
-            for(GoldenTrash t : trashList){
-                t.scrollwithBackground(dx);
+            if (canScrollBeyondCheckpoint) {
+                backgroundX -= dx;
+                for (GoldenTrash t : trashList) {
+                    t.scrollwithBackground(dx);
+                }
+            } else {
+                // Prevent scrolling but let Kirby move within a range near checkpoint
+                kirby.move(dx, 0);
+                // Optionally clamp Kirby's x to prevent going too far past checkpoint
+                if (kirby.getX() > 700) kirby.setPosition(700, kirby.getY());
             }
         }
-        kirby.move(dx, 0);
+        // Additional camera adjustment code (your existing logic) can remain here
         int kirbyX = kirby.getX();
         int leftBound = 200;
         int rightBound = 600;
         if (kirbyX < leftBound) {
             cameraX -= leftBound - kirbyX;
             kirby.setPosition(leftBound, kirby.getY());
-        } else if (kirbyX > rightBound){
+        } else if (kirbyX > rightBound) {
             cameraX += kirbyX - rightBound;
             kirby.setPosition(rightBound, kirby.getY());
         }
 
+        if (kirby.getHealth() <= 0) {
+            gameState = "GAME_OVER";
+        }
+
+        checkTrashCollision();
     }
+
     @Override
     public void paintComponent(Graphics g){
         super.paintComponent(g);
@@ -111,8 +136,18 @@ public class Panel extends JPanel implements Runnable, KeyListener{
             }
             for (GoldenTrash t : trashList){
                t.update();
+               t.draw(g, cameraX);
             }
             kirby.draw(g);
+        } else if (gameState.equals("GAME_OVER")){
+            g.setColor(Color.BLACK);
+            g.fillRect(0, 0, WIDTH, HEIGHT);
+            g.setColor(Color.RED);
+            g.setFont(new Font("SansSerif", Font.BOLD, 48));
+            g.drawString("GAME OVER", WIDTH / 2 - 140, HEIGHT / 2 - 20);
+
+            g.setFont(new Font("SansSerif", Font.PLAIN, 24));
+            g.drawString("Press R to Restart", WIDTH / 2 - 100, HEIGHT / 2 + 30);
         }
     }
 
@@ -123,14 +158,11 @@ public class Panel extends JPanel implements Runnable, KeyListener{
 
         for(int i = 0; i < 5; i++){
             int x = (int) (Math.random() * 700 + 50);
-            int y = 400;
+            int y = (int)(Math.random() * 40 + 460);
             trashList.add(new GoldenTrash(x, y));
         }
     }
 
-    public void spawnTrash(){
-
-    }
     @Override
     public void keyTyped(KeyEvent e) {
 
@@ -139,19 +171,25 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     @Override
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
-
-        if(key == KeyEvent.VK_W && !kirby.isJumping()){
-            up = true;
-            kirby.jump();
-        }
-        if(key == KeyEvent.VK_S){
-            down = true;
-        }
-        if(key == KeyEvent.VK_A){
-            left = true;
-        }
-        if(key == KeyEvent.VK_D){
-            right = true;
+        if(gameState.equals("PLAYING")){
+            if(key == KeyEvent.VK_W && !kirby.isJumping()){
+                up = true;
+                kirby.jump();
+            }
+            if(key == KeyEvent.VK_S){
+                down = true;
+            }
+            if(key == KeyEvent.VK_A){
+                left = true;
+            }
+            if(key == KeyEvent.VK_D){
+                right = true;
+            }
+        } else if (gameState.equals("GAME_OVER")){
+            if(key == KeyEvent.VK_R){
+                resetGame();
+                gameState = "HOME";
+            }
         }
     }
 
@@ -175,5 +213,25 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     @Override
     public void run() {
 
+    }
+
+    private void checkTrashCollision() {
+        for (int i = 0; i < trashList.size(); i++) {
+            GoldenTrash t = trashList.get(i);
+            int dx = Math.abs(kirby.getX() - t.getX());
+            int dy = Math.abs(kirby.getY() - t.getY());
+            if (dx < 40 && dy < 40) {
+                boolean exploded = Math.random() < 0.3; // 30% explosion chance
+
+                if (exploded && !kirby.vacuum.resistExplosion()) {
+                    kirby.takeDamage(30); // Or decrease health
+                }
+
+                // Add score
+                kirby.collectTrash(); // Create this method to increase score
+                trashList.remove(i);
+                i--;
+            }
+        }
     }
 }
