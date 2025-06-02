@@ -10,8 +10,13 @@ import java.util.ArrayList;
 
 public class Panel extends JPanel implements Runnable, KeyListener{
     private ArrayList<GoldenTrash> trashList = new ArrayList<>();
+    private ArrayList<BufferedImage> backgroundList = new ArrayList<>();
     private BufferedImage kirbyK;
     private BufferedImage background;
+    private BufferedImage background1;
+    private BufferedImage background2;
+    private BufferedImage background3;
+    private BufferedImage background4;
     private BufferedImage homescreen;
     private int backgroundX;
     private int cameraX = 0;
@@ -30,7 +35,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     private final int requiredTrash = 5;  // Number of trash Kirby must collect before unlocking scrolling beyond checkpoint
 
     public Panel(){
-        kirby = new Kirby(200, 500);
+        kirby = new Kirby(200, 495);
         kirby.loadWalkingFrames("src/Visuals", 4);
         kirby.loadEatingFrames("src/Eating_Animation", 5);
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
@@ -51,12 +56,23 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         });
 
         try {
-            homescreen = ImageIO.read(new File("src/Visuals/HOMESCREEN.PNG"));
+            homescreen = ImageIO.read(new File("src/Visuals/HOMESCREEN.png"));
             background = ImageIO.read(new File(("src/Visuals/Dreamscape.jpg")));
+            background1 = ImageIO.read(new File("src/Visuals/campfire.jpg"));
+            background2 = ImageIO.read(new File("src/Visuals/Forest.jpg"));
+            background3 = ImageIO.read(new File("src/Visuals/Sky.jpg"));
+            background4 = ImageIO.read(new File("src/Visuals/Sky_2.jpg"));
+
             kirbyK = ImageIO.read(new File("src/Visuals/tile000.png"));
         } catch (IOException e){
             e.printStackTrace();
         }
+
+        backgroundList.add(background);
+        backgroundList.add(background1);
+        backgroundList.add(background2);
+        backgroundList.add(background3);
+        backgroundList.add(background4);
         backgroundX = 0;
         Timer timer = new Timer(13, e->{
             update();
@@ -113,12 +129,12 @@ public class Panel extends JPanel implements Runnable, KeyListener{
             kirby.setPosition(rightBound, kirby.getY());
         }
 
-        kirby.updateAnimation();
         if (kirby.getHealth() <= 0) {
             gameState = "GAME_OVER";
         }
 
         checkTrashCollision();
+        kirby.updateAnimation();
     }
 
     @Override
@@ -136,10 +152,11 @@ public class Panel extends JPanel implements Runnable, KeyListener{
                 int xPos = i * bgWidth - cameraX % bgWidth;
                 g.drawImage(background, xPos, 0, null);
             }
-            for (GoldenTrash t : trashList){
-               t.update();
-               t.draw(g, cameraX);
+
+            for(GoldenTrash t : trashList){
+                t.draw(g, cameraX);
             }
+
             kirby.draw(g);
         } else if (gameState.equals("GAME_OVER")){
             g.setColor(Color.BLACK);

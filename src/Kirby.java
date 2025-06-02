@@ -64,7 +64,7 @@ public class Kirby {
     }
 
     public void setAnimationState(String state) {
-        if (state.equals("walk") || state.equals("eat")) {
+        if (!this.animationState.equals(state)) {
             this.animationState = state;
             frameIndex = 0;      // Reset animation to first frame
             frameCounter = 0;    // Reset counter
@@ -99,7 +99,7 @@ public class Kirby {
                 }
                 frameCounter = 0;
             }
-        } else {
+        } else if (animationState.equals("walk")){
             frameIndex = 0;
             frameCounter = 0;
         }
@@ -156,10 +156,15 @@ public class Kirby {
         frameCounter++;
         if (frameCounter >= 10) {
             frameIndex++;
-            if (animationState.equals("walk") && frameIndex >= walkFrames.size()) {
-                frameIndex = 0;
-            } else if (animationState.equals("eat") && frameIndex >= eating.size()) {
-                frameIndex = 0;
+            if (animationState.equals("walk")){
+                if(frameIndex >= walkFrames.size()){
+                    frameIndex = 1;
+                }
+            } else if (animationState.equals("eat")){
+                if(frameIndex >= eating.size()){
+                    frameIndex = 0;
+                    setAnimationState("walk");
+                }
             }
             frameCounter = 0;
         }
