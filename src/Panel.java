@@ -113,6 +113,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
             kirby.setPosition(rightBound, kirby.getY());
         }
 
+        kirby.updateAnimation();
         if (kirby.getHealth() <= 0) {
             gameState = "GAME_OVER";
         }
@@ -224,15 +225,14 @@ public class Panel extends JPanel implements Runnable, KeyListener{
             GoldenTrash t = trashList.get(i);
             int dx = Math.abs(kirby.getX() - t.getX());
             int dy = Math.abs(kirby.getY() - t.getY());
-            if (dx < 40 && dy < 40) {
-                boolean exploded = Math.random() < 0.3; // 30% explosion chance
+            if (dx < 40 && dy < 40 && kirby.getAnimationState().equals("eat")) {
+                boolean exploded = Math.random() < 0.3;
 
                 if (exploded && !kirby.vacuum.resistExplosion()) {
-                    kirby.takeDamage(30); // Or decrease health
+                    kirby.takeDamage(30);
                 }
 
-                // Add score
-                kirby.collectTrash(); // Create this method to increase score
+                kirby.collectTrash();
                 trashList.remove(i);
                 i--;
             }
