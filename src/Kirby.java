@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import javax.imageio.ImageIO;
-
 public class Kirby {
     private int health;
     private int x;
@@ -12,11 +11,12 @@ public class Kirby {
     private int speed = 4;
     private int frameIndex = 0;
     private boolean facingRight;
-    private boolean facingLeft;
+    private boolean isEating = false;
     private int score;
     private String animationState = "walk";
     private ArrayList<BufferedImage> eating;
     private ArrayList<BufferedImage> walkFrames;
+    private ArrayList<BufferedImage> jumpingFrames;
     private int currentFrame;
     private int frameCounter;
     public Vacuum vacuum;
@@ -35,6 +35,7 @@ public class Kirby {
         frameIndex = 0;
         walkFrames = new ArrayList<>();
         eating = new ArrayList<>();
+        jumpingFrames = new ArrayList<>();
     }
 
     public void loadWalkingFrames(String folderpath, int frameCount) {
@@ -63,11 +64,30 @@ public class Kirby {
         }
     }
 
+    public void loadJumpingFrames(String folderPath, int frameCount){
+        jumpingFrames.clear();
+        for (int i = 0; i < frameCount; i++) {
+            String fileName = folderPath + "/tile00" + i + ".png";
+            try {
+                BufferedImage frame = ImageIO.read(new File(fileName));
+                jumpingFrames.add(frame);
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
+            }
+        }
+    }
+
     public void setAnimationState(String state) {
-        if (!this.animationState.equals(state)) {
-            this.animationState = state;
-            frameIndex = 0;      // Reset animation to first frame
-            frameCounter = 0;    // Reset counter
+        if (state.equals("eat")) {
+            this.animationState = "eat";
+            frameIndex = 0;
+            frameCounter = 0;
+            isEating = true;
+        } else if (state.equals("walk")) {
+            this.animationState = "walk";
+            frameIndex = 0;
+            frameCounter = 0;
+            isEating = false;
         }
     }
 
@@ -88,21 +108,33 @@ public class Kirby {
             facingRight = true;
         }
 
-        if (dx != 0 || dy != 0) {
+        if (isEating) {
             frameCounter++;
             if (frameCounter >= 10) {
                 frameIndex++;
-                if (animationState.equals("walk") && frameIndex >= walkFrames.size()) {
-                    frameIndex = 1;
-                } else if (animationState.equals("eat") && frameIndex >= eating.size()) {
-                    frameIndex = 0;
+                if (frameIndex >= eating.size()) {
+                    setAnimationState("walk"); // fallback to walk/idle after eating
                 }
                 frameCounter = 0;
             }
-        } else if (animationState.equals("walk")){
-            frameIndex = 0;
-            frameCounter = 0;
+        } else {
+            if (dx != 0 || dy != 0) {
+                // movement animation
+                frameCounter++;
+                if (frameCounter >= 10) {
+                    frameIndex++;
+                    if (animationState.equals("walk") && frameIndex >= walkFrames.size()) {
+                        frameIndex = 1;
+                    }
+                    frameCounter = 0;
+                }
+            } else {
+                // standing still = idle frame
+                frameIndex = 0;
+                frameCounter = 0;
+            }
         }
+
 
         if (y < GROUND_Y || isJumping) {
             velocityY += GRAVITY;
@@ -111,6 +143,11 @@ public class Kirby {
                 y = GROUND_Y;
                 isJumping = false;
                 velocityY = 0;
+                if (!isEating) {
+                    setAnimationState("walk");
+                }
+            } else if (!animationState.equals("jump")) {
+                setAnimationState("jump");
             }
         }
     }
@@ -120,10 +157,11 @@ public class Kirby {
 
         if (animationState.equals("eat") && !eating.isEmpty()) {
             frame = eating.get(frameIndex % eating.size());
+        } else if (animationState.equals("jump") && !jumpingFrames.isEmpty()) {
+            frame = jumpingFrames.get(frameIndex % jumpingFrames.size());
         } else if (!walkFrames.isEmpty()) {
             frame = walkFrames.get(frameIndex % walkFrames.size());
         }
-
         if (frame != null) {
             if (facingRight) {
                 g.drawImage(frame, x, y, null);
@@ -156,15 +194,13 @@ public class Kirby {
         frameCounter++;
         if (frameCounter >= 10) {
             frameIndex++;
-            if (animationState.equals("walk")){
-                if(frameIndex >= walkFrames.size()){
-                    frameIndex = 1;
-                }
-            } else if (animationState.equals("eat")){
-                if(frameIndex >= eating.size()){
-                    frameIndex = 0;
-                    setAnimationState("walk");
-                }
+            if (animationState.equals("walk") && frameIndex >= walkFrames.size()) {
+                frameIndex = 1;
+            } else if (animationState.equals("eat") && frameIndex >= eating.size()) {
+                frameIndex = 0;
+                setAnimationState("walk");
+            } else if (animationState.equals("jump") && frameIndex >= jumpingFrames.size()) {
+                frameIndex = jumpingFrames.size() - 1; // Hold last jump frame
             }
             frameCounter = 0;
         }
@@ -183,6 +219,10 @@ public class Kirby {
 
     public boolean isJumping() {
         return isJumping;
+    }
+
+    public boolean isEating(){
+        return animationState.equals("eat");
     }
 
     public int getHealth() {
