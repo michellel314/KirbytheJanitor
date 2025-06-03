@@ -10,21 +10,22 @@ public class Kirby {
     private int y;
     private int speed = 4;
     private int frameIndex = 0;
+    private int score;
     private boolean facingRight;
     private boolean isEating = false;
-    private int score;
+    private int jumpCount;
     private String animationState = "walk";
     private ArrayList<BufferedImage> eating;
     private ArrayList<BufferedImage> walkFrames;
     private ArrayList<BufferedImage> jumpingFrames;
-    private int currentFrame;
     private int frameCounter;
     public Vacuum vacuum;
     private int velocityY = 0;
     private boolean isJumping = false;
-    private final int GROUND_Y = 300;
+    private final int GROUND_Y = 495;
     private final int JUMP_STRENGTH = -12;
     private final int GRAVITY = 1;
+    private final int MAX_JUMPS = 2;
 
     public Kirby(int x, int y) {
         health = 100;
@@ -135,15 +136,14 @@ public class Kirby {
             }
         }
 
-
-        if (y < GROUND_Y || isJumping) {
+        if (isJumping) {
             velocityY += GRAVITY;
             y += velocityY;
             if (y >= GROUND_Y) {
                 y = GROUND_Y;
-                isJumping = false;
                 velocityY = 0;
-                if (!isEating) {
+                isJumping = false;
+                if (!animationState.equals("eat")) {
                     setAnimationState("walk");
                 }
             } else if (!animationState.equals("jump")) {
@@ -152,6 +152,14 @@ public class Kirby {
         }
     }
 
+    public void jump (){
+        if(jumpCount < MAX_JUMPS){
+            velocityY = JUMP_STRENGTH;
+            isJumping = true;
+            jumpCount++;
+            setAnimationState("jump");
+        }
+    }
     public void draw(Graphics g) {
         BufferedImage frame = null;
 
@@ -183,10 +191,17 @@ public class Kirby {
         }
     }
 
-    public void jump() {
-        if (!isJumping) {
-            isJumping = true;
-            velocityY = JUMP_STRENGTH;
+    public void applyGravity() {
+       velocityY += GRAVITY;
+       y += velocityY;
+        if (y >= GROUND_Y) {
+            y = GROUND_Y;
+            velocityY = 0;
+            jumpCount = 0;
+            isJumping = false;
+            if (!animationState.equals("eat")) {
+                setAnimationState("walk");
+            }
         }
     }
 
@@ -205,6 +220,7 @@ public class Kirby {
             frameCounter = 0;
         }
     }
+
     public int getX() {
         return x;
     }
@@ -232,6 +248,11 @@ public class Kirby {
     public String getAnimationState(){
         return animationState;
     }
+
+    public void setVelocityY(int num){
+        velocityY = num;
+    }
+
     public void setPosition(int newX, int newY) {
         x = newX;
         y = newY;
@@ -248,7 +269,6 @@ public class Kirby {
             explode();
         }
     }
-
 
     private int getCurrentFrameWidth() {
         if (animationState.equals("eat") && !eating.isEmpty()) {

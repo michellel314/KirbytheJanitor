@@ -134,6 +134,10 @@ public class Panel extends JPanel implements Runnable, KeyListener{
             gameState = "GAME_OVER";
         }
 
+        if(kirby.isJumping()){
+            kirby.applyGravity();
+        }
+
         checkTrashCollision();
         kirby.updateAnimation();
     }
@@ -193,8 +197,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         int key = e.getKeyCode();
         if(gameState.equals("PLAYING")){
             if(key == KeyEvent.VK_W && !kirby.isJumping()){
-                up = true;
-                kirby.jump();
+              kirby.jump();
             }
             if(key == KeyEvent.VK_S){
                 down = true;
@@ -204,6 +207,9 @@ public class Panel extends JPanel implements Runnable, KeyListener{
             }
             if(key == KeyEvent.VK_D){
                 right = true;
+            }
+            if(key == KeyEvent.VK_E && !kirby.isJumping()){
+                kirby.setAnimationState("eat");
             }
         } else if (gameState.equals("GAME_OVER")){
             if(key == KeyEvent.VK_R){
