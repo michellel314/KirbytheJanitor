@@ -38,7 +38,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         kirby = new Kirby(200, 495);
         kirby.loadWalkingFrames("src/Visuals", 4);
         kirby.loadEatingFrames("src/Eating_Animation", 5);
-        kirby.loadJumpingFrames("src/Jumping_Animation", 5);
+        kirby.loadJumpingFrames("src\\Jumping_Animation", 5);
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);
         addKeyListener(this);
@@ -196,7 +196,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
         if(gameState.equals("PLAYING")){
-            if(key == KeyEvent.VK_W && !kirby.isJumping()){
+            if(key == KeyEvent.VK_W){
               kirby.jump();
             }
             if(key == KeyEvent.VK_S){

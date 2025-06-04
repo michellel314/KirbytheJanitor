@@ -153,22 +153,29 @@ public class Kirby {
     }
 
     public void jump (){
-        if(jumpCount < MAX_JUMPS){
+        if(!isJumping){
             velocityY = JUMP_STRENGTH;
             isJumping = true;
             jumpCount++;
             setAnimationState("jump");
+            frameIndex = 0;
         }
     }
     public void draw(Graphics g) {
         BufferedImage frame = null;
 
-        if (animationState.equals("eat") && !eating.isEmpty()) {
-            frame = eating.get(frameIndex % eating.size());
-        } else if (animationState.equals("jump") && !jumpingFrames.isEmpty()) {
-            frame = jumpingFrames.get(frameIndex % jumpingFrames.size());
-        } else if (!walkFrames.isEmpty()) {
-            frame = walkFrames.get(frameIndex % walkFrames.size());
+        if (animationState.equals("eat")){
+            if(!eating.isEmpty()){
+                frame = eating.get(frameIndex % eating.size());
+            }
+        } else if (animationState.equals("jump")) {
+            if(!jumpingFrames.isEmpty()){
+                frame = jumpingFrames.get(frameIndex % jumpingFrames.size());
+            }
+        } else {
+            if(!walkFrames.isEmpty()){
+                frame = walkFrames.get(frameIndex % walkFrames.size());
+            }
         }
         if (frame != null) {
             if (facingRight) {
