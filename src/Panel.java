@@ -63,15 +63,16 @@ public class Panel extends JPanel implements Runnable, KeyListener{
             background3 = ImageIO.read(new File("src/Visuals/Sky.jpg"));
             background4 = ImageIO.read(new File("src/Visuals/Sky_2.jpg"));
 
-            // If you want to switch backgrounds later, you can add more here:
-            // backgroundList.add(background);
-            // ... and so on
-
+            backgroundList.add(background);
+            backgroundList.add(background1);
+            backgroundList.add(background2);
+            backgroundList.add(background3);
+            backgroundList.add(background4);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        Timer timer = new Timer(13, e -> {
+        Timer timer = new Timer(12, e -> {
             update();
             repaint();
         });
@@ -109,6 +110,17 @@ public class Panel extends JPanel implements Runnable, KeyListener{
                 cameraX += dx;
                 for (GoldenTrash t : trashList) {
                     t.scrollwithBackground(-dx); // scroll trash opposite to movement
+                }
+                // Clamp cameraX here so it doesn't go too far left or right
+                int totalBackgroundWidth = 0;
+                for (BufferedImage bg : backgroundList) {
+                    totalBackgroundWidth += bg.getWidth();
+                }
+
+                if (cameraX < 0) {
+                    cameraX = 0;
+                } else if (cameraX > totalBackgroundWidth - WIDTH) {
+                    cameraX = totalBackgroundWidth - WIDTH;
                 }
             } else {
                 // Can't scroll beyond checkpoint, Kirby can only move to a limit
@@ -154,24 +166,29 @@ public class Panel extends JPanel implements Runnable, KeyListener{
             // Draw Kirby home image here if you have it
 
         } else if (gameState.equals("PLAYING")) {
-            // Draw scrolling background
-            int bgWidth = background.getWidth();
-
-            // Draw multiple tiles of background to cover entire width
-            int startTile = cameraX / bgWidth;
-            int offset = cameraX % bgWidth;
-
-            for (int i = startTile - 1; i <= startTile + (WIDTH / bgWidth) + 1; i++) {
-                int xPos = i * bgWidth - offset;
-                g.drawImage(background, xPos, 0, null);
+            int totalWidth = 0;
+            for (BufferedImage bg : backgroundList) {
+                totalWidth += bg.getWidth();
             }
 
-            // Draw trash relative to cameraX
+            // Loop cameraX to keep within total background width (for seamless looping)
+            int loopedCameraX = cameraX % totalWidth;
+
+            int currentX = -loopedCameraX;
+
+            // Draw backgrounds repeatedly until screen width is covered
+            while (currentX < WIDTH) {
+                for (BufferedImage bg : backgroundList) {
+                    g.drawImage(bg, currentX, 0, null);
+                    currentX += bg.getWidth();
+                    if (currentX >= WIDTH) break;
+                }
+            }
+
+            // Draw trash and Kirby as usual
             for (GoldenTrash t : trashList) {
                 t.draw(g, cameraX);
             }
-
-            // Draw Kirby (his draw method should consider cameraX if needed)
             kirby.draw(g);
 
         } else if (gameState.equals("GAME_OVER")) {
@@ -195,22 +212,24 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         kirby.resetHealth();
         kirby.resetScore();
         kirby.resetState();
+        kirby.resetJump();
+        kirby.resetAnimation();
 
         trashList.clear();
         for (int i = 0; i < 5; i++) {
-            int x = (int) (Math.random() * 700 + 50);
-            int y = (int) (Math.random() * 200 + 300);
-            trashList.add(new GoldenTrash(x, y));
+            spawnNonOverlappingTrash();
         }
     }
 
     private void checkTrashCollision() {
+        int kirbyWorldX = kirby.getX() + cameraX;
+        int kirbyY = kirby.getY();
+
         for (int i = 0; i < trashList.size(); i++) {
             GoldenTrash t = trashList.get(i);
-            int dx = Math.abs(kirby.getX() - t.getX());
-            int dy = Math.abs(kirby.getY() - t.getY());
+            int dx = Math.abs(kirbyWorldX - t.getX());
+            int dy = Math.abs(kirbyY - t.getY());
 
-            // Only collide when Kirby is eating
             if (dx < 50 && dy < 50 && kirby.getAnimationState().equals("eat")) {
                 boolean exploded = Math.random() < 0.3;
 
@@ -219,15 +238,53 @@ public class Panel extends JPanel implements Runnable, KeyListener{
                 }
 
                 kirby.collectTrash();
-
                 trashList.remove(i);
                 i--;
 
-                // Spawn new trash somewhere else
-                int newX = (int) (Math.random() * 700 + 50 + cameraX);
-                int newY = (int) (Math.random() * 200 + 300);
-                trashList.add(new GoldenTrash(newX, newY));
+                // Spawn new trash in world coordinates
+                spawnNonOverlappingTrash();
             }
+        }
+    }
+
+    private boolean isTooClose(int x, int y) {
+        int minDistance = 50; // Minimum distance between trash centers (adjust as needed)
+
+        for (GoldenTrash existing : trashList) {
+            int ex = existing.getX() + 20; // center X of existing trash (assuming 40 width)
+            int ey = existing.getY() + 20; // center Y of existing trash
+
+            int distX = ex - (x + 20);
+            int distY = ey - (y + 20);
+
+            double distance = Math.sqrt(distX * distX + distY * distY);
+
+            if (distance < minDistance) {
+                return true; // Too close, overlapping or nearly so
+            }
+        }
+        return false; // Good to place here
+    }
+
+    private void spawnNonOverlappingTrash() {
+        int maxAttempts = 200;
+        int attempts = 0;
+        boolean placed = false;
+
+        while (!placed && attempts < maxAttempts) {
+            attempts++;
+
+            int newX = (int) (Math.random() * (WIDTH - 80)) + cameraX + 40;
+            int newY = (int) (Math.random() * 200 + 300);
+
+            if (!isTooClose(newX, newY)) {
+                trashList.add(new GoldenTrash(newX, newY));
+                placed = true;
+            }
+        }
+
+        if (!placed) {
+            System.out.println("Warning: Could not place trash without overlapping after max attempts");
         }
     }
 

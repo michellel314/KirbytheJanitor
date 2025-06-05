@@ -20,6 +20,7 @@ public class GoldenTrash {
     public void update(){
         x -= 2;
     }
+
     public void draw(Graphics g, int cameraX){
         g.drawImage(image, x - cameraX, y, null);
     }
@@ -38,5 +39,9 @@ public class GoldenTrash {
 
     public int getWidth(){
         return image.getWidth();
+    }
+
+    public int getHeight(){
+        return image.getHeight();
     }
 }

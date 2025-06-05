@@ -119,7 +119,7 @@ public class Kirby {
             }
 
             frameCounter++;
-            if (frameCounter >= 10) {
+            if (frameCounter >= 5) {
                 frameCounter = 0;
                 frameIndex++;
                 if (frameIndex >= jumpingFrames.size()) {
@@ -157,10 +157,6 @@ public class Kirby {
         }
     }
 
-    public void explode() {
-        System.out.println("KIRBY EXPLODED! GAME OVER");
-    }
-
     public void upgradeVacuum() {
         if (score >= 500 && vacuum.getTier() < 3) {
             score -= 500;
@@ -171,7 +167,7 @@ public class Kirby {
 
     // Double jump logic
     public void jump() {
-        if (jumpCount < maxJumps) {
+        if (jumpCount < maxJumps && !isEating) {  // <- add !isEating
             velocityY = JUMP_STRENGTH;
             isJumping = true;
             jumpCount++;
@@ -194,17 +190,13 @@ public class Kirby {
         frameCounter++;
 
         if (animationState.equals("eat")) {
-            if (frameIndex >= eating.size()) {
-                isEating = false;
-                setAnimationState("walk");
-                frameIndex = 0;
-                frameCounter = 0;
-                return; // exit early
-            }
-
             if (frameCounter >= 10) {
                 frameCounter = 0;
                 frameIndex++;
+                if (frameIndex >= eating.size()) {
+                    isEating = false;
+                    setAnimationState("walk");  // Return to walk after done eating
+                }
             }
 
         } else if (animationState.equals("walk")) {
@@ -255,15 +247,15 @@ public class Kirby {
         return health;
     }
 
-    public final int getMaxJumps(){
-        return maxJumps;
-    }
-
     public int getJumpCount(){
         return jumpCount;
     }
     public String getAnimationState(){
         return animationState;
+    }
+
+    public final int getMaxJumps(){
+        return maxJumps;
     }
     public void setPosition(int newX, int newY) {
         x = newX;
@@ -278,9 +270,23 @@ public class Kirby {
         health -= amount;
         if (health <= 0) {
             health = 0;
-            explode();
         }
     }
+
+    public void resetJump() {
+        jumpCount = 0;
+        isJumping = false;
+        velocityY = JUMP_STRENGTH;
+    }
+
+    public void resetAnimation() {
+        animationState = "walk"; // or default state
+        frameIndex = 0;
+        isEating = false;
+        isJumping = false;
+        // reset any other animation-related flags or timers here
+    }
+
 
     public void resetHealth(){
         health = 100;
