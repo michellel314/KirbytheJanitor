@@ -8,37 +8,37 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
-public class Panel extends JPanel implements Runnable, KeyListener {
-
+public class Panel extends JPanel implements Runnable, KeyListener{
     private ArrayList<GoldenTrash> trashList = new ArrayList<>();
     private ArrayList<BufferedImage> backgroundList = new ArrayList<>();
+    private BufferedImage kirbyK;
+    private BufferedImage background;
+    private BufferedImage background1;
+    private BufferedImage background2;
+    private BufferedImage background3;
+    private BufferedImage background4;
     private BufferedImage homescreen;
-    private BufferedImage background; // current background used for scrolling
+    private int backgroundX;
     private int cameraX = 0;
-
     private final int WIDTH = 800;
     private final int HEIGHT = 600;
-
     private Kirby kirby;
-
-    private boolean left, right, up, down;
+    private boolean up;
+    private boolean down;
+    private boolean left;
+    private boolean right;
     private boolean backgroundScrolling = false;
-
     private String gameState = "HOME";
-
     private JButton start;
-
     private boolean checkpointReached = false;
     private boolean canScrollBeyondCheckpoint = false;
+    private final int requiredTrash = 5;  // Number of trash Kirby must collect before unlocking scrolling beyond checkpoint
 
-    private final int requiredTrash = 5;
-
-    public Panel() {
+    public Panel(){
         kirby = new Kirby(200, 300);
         kirby.loadWalkingFrames("src/Visuals", 4);
         kirby.loadEatingFrames("src/Eating_Animation", 5);
         kirby.loadJumpingFrames("src/Jumping_Animation", 5);
-
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);
         addKeyListener(this);
@@ -57,7 +57,11 @@ public class Panel extends JPanel implements Runnable, KeyListener {
 
         try {
             homescreen = ImageIO.read(new File("src/Visuals/HOMESCREEN.png"));
-            background = ImageIO.read(new File("src/Visuals/Dreamscape.jpg"));
+            background = ImageIO.read(new File(("src/Visuals/Dreamscape.jpg")));
+            background1 = ImageIO.read(new File("src/Visuals/campfire.jpg"));
+            background2 = ImageIO.read(new File("src/Visuals/Forest.jpg"));
+            background3 = ImageIO.read(new File("src/Visuals/Sky.jpg"));
+            background4 = ImageIO.read(new File("src/Visuals/Sky_2.jpg"));
 
             // If you want to switch backgrounds later, you can add more here:
             // backgroundList.add(background);
@@ -134,7 +138,6 @@ public class Panel extends JPanel implements Runnable, KeyListener {
         if (kirby.getHealth() <= 0) {
             gameState = "GAME_OVER";
         }
-
         checkTrashCollision();
     }
 
@@ -274,7 +277,8 @@ public class Panel extends JPanel implements Runnable, KeyListener {
             down = false;
         } else if (key == KeyEvent.VK_A) {
             left = false;
-        } else if (key == KeyEvent.VK_D) {
+        }
+        if(key == KeyEvent.VK_D){
             right = false;
         }
     }

@@ -4,12 +4,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import javax.imageio.ImageIO;
-
 public class Kirby {
     private int health;
     private int dx = 0;
     private int x;
     private int y;
+    private int speed = 4;
     private int frameIndex = 0;
     private boolean facingRight = true;
     private boolean isEating = false;
@@ -18,6 +18,7 @@ public class Kirby {
     private ArrayList<BufferedImage> eating;
     private ArrayList<BufferedImage> walkFrames;
     private ArrayList<BufferedImage> jumpingFrames;
+    private int currentFrame;
     private int frameCounter;
     public Vacuum vacuum;
     private int velocityY = 0;
@@ -147,7 +148,6 @@ public class Kirby {
         } else if (!walkFrames.isEmpty()) {
             frame = walkFrames.get(frameIndex % walkFrames.size());
         }
-
         if (frame != null) {
             if (facingRight) {
                 g.drawImage(frame, x, y, null);
@@ -231,7 +231,6 @@ public class Kirby {
             }
         }
     }
-
     public int getX() {
         return x;
     }
@@ -249,7 +248,7 @@ public class Kirby {
     }
 
     public boolean isEating(){
-        return isEating;
+        return animationState.equals("eat");
     }
 
     public int getHealth() {
@@ -266,7 +265,6 @@ public class Kirby {
     public String getAnimationState(){
         return animationState;
     }
-
     public void setPosition(int newX, int newY) {
         x = newX;
         y = newY;
@@ -295,5 +293,4 @@ public class Kirby {
     public void resetState(){
         animationState = "walk";
     }
-
 }
