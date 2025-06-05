@@ -8,160 +8,173 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
-public class Panel extends JPanel implements Runnable, KeyListener{
+public class Panel extends JPanel implements Runnable, KeyListener {
+
     private ArrayList<GoldenTrash> trashList = new ArrayList<>();
     private ArrayList<BufferedImage> backgroundList = new ArrayList<>();
-    private BufferedImage kirbyK;
-    private BufferedImage background;
-    private BufferedImage background1;
-    private BufferedImage background2;
-    private BufferedImage background3;
-    private BufferedImage background4;
     private BufferedImage homescreen;
-    private int backgroundX;
+    private BufferedImage background; // current background used for scrolling
     private int cameraX = 0;
+
     private final int WIDTH = 800;
     private final int HEIGHT = 600;
+
     private Kirby kirby;
-    private boolean up;
-    private boolean down;
-    private boolean left;
-    private boolean right;
+
+    private boolean left, right, up, down;
     private boolean backgroundScrolling = false;
+
     private String gameState = "HOME";
+
     private JButton start;
+
     private boolean checkpointReached = false;
     private boolean canScrollBeyondCheckpoint = false;
-    private final int requiredTrash = 5;  // Number of trash Kirby must collect before unlocking scrolling beyond checkpoint
 
-    public Panel(){
-        kirby = new Kirby(200, 495);
+    private final int requiredTrash = 5;
+
+    public Panel() {
+        kirby = new Kirby(200, 300);
         kirby.loadWalkingFrames("src/Visuals", 4);
         kirby.loadEatingFrames("src/Eating_Animation", 5);
         kirby.loadJumpingFrames("src/Jumping_Animation", 5);
+
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);
         addKeyListener(this);
-
-        setLayout(null); // Let us manually place components
+        setLayout(null);
 
         start = new JButton("Start Game");
-        start.setBounds(310, 275, 150, 50); // x, y, width, height
+        start.setBounds(310, 275, 150, 50);
         add(start);
 
         start.addActionListener(e -> {
-            remove(start);     // Hide the button
-            gameState = "PLAYING";   // Switch game state
-            resetGame();             // Reset Kirby & background
-            requestFocusInWindow();  // Make sure keys work again
+            remove(start);
+            gameState = "PLAYING";
+            resetGame();
+            requestFocusInWindow();
         });
 
         try {
             homescreen = ImageIO.read(new File("src/Visuals/HOMESCREEN.png"));
-            background = ImageIO.read(new File(("src/Visuals/Dreamscape.jpg")));
-            background1 = ImageIO.read(new File("src/Visuals/campfire.jpg"));
-            background2 = ImageIO.read(new File("src/Visuals/Forest.jpg"));
-            background3 = ImageIO.read(new File("src/Visuals/Sky.jpg"));
-            background4 = ImageIO.read(new File("src/Visuals/Sky_2.jpg"));
+            background = ImageIO.read(new File("src/Visuals/Dreamscape.jpg"));
 
-            kirbyK = ImageIO.read(new File("src/Visuals/tile000.png"));
-        } catch (IOException e){
+            // If you want to switch backgrounds later, you can add more here:
+            // backgroundList.add(background);
+            // ... and so on
+
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
-        backgroundList.add(background);
-        backgroundList.add(background1);
-        backgroundList.add(background2);
-        backgroundList.add(background3);
-        backgroundList.add(background4);
-        backgroundX = 0;
-        Timer timer = new Timer(13, e->{
+        Timer timer = new Timer(13, e -> {
             update();
             repaint();
         });
         timer.start();
-
     }
 
     public void update() {
+        if (!gameState.equals("PLAYING")) return;
+
         int dx = 0;
         if (left) dx = -4;
         else if (right) dx = 4;
 
-        // Check if Kirby has reached checkpoint position (e.g., x = 600)
+        // Check checkpoint crossing
         if (!checkpointReached && kirby.getX() >= 600) {
             checkpointReached = true;
-            backgroundScrolling = false;  // Lock scrolling when at checkpoint
+            backgroundScrolling = false; // lock scrolling at checkpoint
         }
 
-        // Check if Kirby collected enough trash to unlock scrolling past checkpoint
+        // Unlock scrolling beyond checkpoint if enough trash collected
         if (checkpointReached && kirby.getScore() >= requiredTrash * 100) {
             canScrollBeyondCheckpoint = true;
         }
 
-        // Movement and scrolling logic
-        if (kirby.getX() < 400 || !backgroundScrolling) {
+        // Movement & scrolling logic:
+        if (!backgroundScrolling) {
+            // Kirby moves freely until background scrolling starts
             kirby.move(dx, 0);
             if (kirby.getX() > 400 && !checkpointReached) {
                 backgroundScrolling = true;
             }
         } else {
             if (canScrollBeyondCheckpoint) {
-                backgroundX -= dx;
+                // Scroll background and trash oppositely to Kirby movement to simulate camera following
+                cameraX += dx;
                 for (GoldenTrash t : trashList) {
-                    t.scrollwithBackground(dx);
+                    t.scrollwithBackground(-dx); // scroll trash opposite to movement
                 }
             } else {
-                // Prevent scrolling but let Kirby move within a range near checkpoint
+                // Can't scroll beyond checkpoint, Kirby can only move to a limit
                 kirby.move(dx, 0);
-                // Optionally clamp Kirby's x to prevent going too far past checkpoint
                 if (kirby.getX() > 700) kirby.setPosition(700, kirby.getY());
             }
         }
-        // Additional camera adjustment code (your existing logic) can remain here
+
+        // Camera boundary enforcement to keep Kirby in view (optional, improves smoothness)
         int kirbyX = kirby.getX();
         int leftBound = 200;
         int rightBound = 600;
+
         if (kirbyX < leftBound) {
-            cameraX -= leftBound - kirbyX;
+            int diff = leftBound - kirbyX;
+            cameraX -= diff;
             kirby.setPosition(leftBound, kirby.getY());
         } else if (kirbyX > rightBound) {
-            cameraX += kirbyX - rightBound;
+            int diff = kirbyX - rightBound;
+            cameraX += diff;
             kirby.setPosition(rightBound, kirby.getY());
         }
+
+        kirby.updateVerticalMovement();
+        kirby.updateAnimation();
 
         if (kirby.getHealth() <= 0) {
             gameState = "GAME_OVER";
         }
 
         checkTrashCollision();
-        kirby.updateAnimation();
     }
 
     @Override
-    public void paintComponent(Graphics g){
+    protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+
         if (gameState.equals("HOME")) {
-            g.drawImage(homescreen, 0, 0, null);
-            g.setFont(new Font("Sansserif", Font.BOLD, 30));
+            g.drawImage(homescreen, 0, 0, WIDTH, HEIGHT, null);
+            g.setFont(new Font("SansSerif", Font.BOLD, 30));
             g.setColor(Color.pink);
             g.drawString("Kirby the Janitor", 270, 200);
-            g.drawImage(kirbyK, 270, 150, null);
+
+            // Draw Kirby home image here if you have it
+
         } else if (gameState.equals("PLAYING")) {
+            // Draw scrolling background
             int bgWidth = background.getWidth();
-            for (int i = -1; i < getWidth() / bgWidth + 2; i++) {
-                int xPos = i * bgWidth - cameraX % bgWidth;
+
+            // Draw multiple tiles of background to cover entire width
+            int startTile = cameraX / bgWidth;
+            int offset = cameraX % bgWidth;
+
+            for (int i = startTile - 1; i <= startTile + (WIDTH / bgWidth) + 1; i++) {
+                int xPos = i * bgWidth - offset;
                 g.drawImage(background, xPos, 0, null);
             }
 
-            for(GoldenTrash t : trashList){
+            // Draw trash relative to cameraX
+            for (GoldenTrash t : trashList) {
                 t.draw(g, cameraX);
             }
 
+            // Draw Kirby (his draw method should consider cameraX if needed)
             kirby.draw(g);
-        } else if (gameState.equals("GAME_OVER")){
+
+        } else if (gameState.equals("GAME_OVER")) {
             g.setColor(Color.BLACK);
             g.fillRect(0, 0, WIDTH, HEIGHT);
+
             g.setColor(Color.RED);
             g.setFont(new Font("SansSerif", Font.BOLD, 48));
             g.drawString("GAME OVER", WIDTH / 2 - 140, HEIGHT / 2 - 20);
@@ -171,73 +184,21 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         }
     }
 
-    public void resetGame(){
+    public void resetGame() {
         cameraX = 0;
+        checkpointReached = false;
+        canScrollBeyondCheckpoint = false;
         kirby.setPosition(200, 500);
-        trashList.clear();
+        kirby.resetHealth();
+        kirby.resetScore();
+        kirby.resetState();
 
-        for(int i = 0; i < 5; i++){
+        trashList.clear();
+        for (int i = 0; i < 5; i++) {
             int x = (int) (Math.random() * 700 + 50);
-            int y = (int)(Math.random() * 200 + 300);  // randomly vary height
+            int y = (int) (Math.random() * 200 + 300);
             trashList.add(new GoldenTrash(x, y));
         }
-    }
-
-    @Override
-    public void keyTyped(KeyEvent e) {
-
-    }
-
-    @Override
-    public void keyPressed(KeyEvent e) {
-        int key = e.getKeyCode();
-        if(gameState.equals("PLAYING")){
-            if(key == KeyEvent.VK_W && !kirby.isJumping()){
-                up = true;
-                kirby.jump();
-            }
-            if(key == KeyEvent.VK_S){
-                down = true;
-            }
-            if(key == KeyEvent.VK_A){
-                left = true;
-            }
-            if(key == KeyEvent.VK_D){
-                right = true;
-            }
-        } else if (gameState.equals("GAME_OVER")){
-            if(key == KeyEvent.VK_R){
-                resetGame();
-                gameState = "HOME";
-            }
-        }
-    }
-
-    @Override
-    public void keyReleased(KeyEvent e) {
-        int key = e.getKeyCode();
-        if(key == KeyEvent.VK_W){
-            up = false;
-        }
-        if(key == KeyEvent.VK_S){
-            down = false;
-        }
-        if(key == KeyEvent.VK_A){
-            left = false;
-        }
-        if(key == KeyEvent.VK_D){
-            right = false;
-        }
-        if (key == KeyEvent.VK_E) {
-            if (!kirby.isEating()) {
-                kirby.setAnimationState("eat");
-            }
-        }
-    }
-
-    @Override
-    public void run() {
-
     }
 
     private void checkTrashCollision() {
@@ -245,7 +206,9 @@ public class Panel extends JPanel implements Runnable, KeyListener{
             GoldenTrash t = trashList.get(i);
             int dx = Math.abs(kirby.getX() - t.getX());
             int dy = Math.abs(kirby.getY() - t.getY());
-            if (dx < 40 && dy < 40 && kirby.getAnimationState().equals("eat")) {
+
+            // Only collide when Kirby is eating
+            if (dx < 50 && dy < 50 && kirby.getAnimationState().equals("eat")) {
                 boolean exploded = Math.random() < 0.3;
 
                 if (exploded && !kirby.vacuum.resistExplosion()) {
@@ -253,12 +216,72 @@ public class Panel extends JPanel implements Runnable, KeyListener{
                 }
 
                 kirby.collectTrash();
+
                 trashList.remove(i);
-                int newX = (int) (Math.random() * 700 + 50);
+                i--;
+
+                // Spawn new trash somewhere else
+                int newX = (int) (Math.random() * 700 + 50 + cameraX);
                 int newY = (int) (Math.random() * 200 + 300);
                 trashList.add(new GoldenTrash(newX, newY));
-                i--;
             }
         }
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+        // no op
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        int key = e.getKeyCode();
+
+        if (gameState.equals("PLAYING")) {
+            if (key == KeyEvent.VK_W) {
+                if (kirby.getJumpCount() < kirby.getMaxJumps()) {
+                    up = true;
+                    kirby.jump();
+                }
+            } else if (key == KeyEvent.VK_S) {
+                down = true;
+            } else if (key == KeyEvent.VK_A) {
+                left = true;
+            } else if (key == KeyEvent.VK_D) {
+                right = true;
+            } else if (key == KeyEvent.VK_E) {
+                if (!kirby.isEating()) {
+                    kirby.startEating();
+                }
+            }
+        } else if (gameState.equals("GAME_OVER")) {
+            if (key == KeyEvent.VK_R) {
+                resetGame();
+                gameState = "HOME";
+                add(start);
+                start.requestFocusInWindow();
+            }
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+        int key = e.getKeyCode();
+
+        if (key == KeyEvent.VK_W) {
+            up = false;
+        } else if (key == KeyEvent.VK_S) {
+            down = false;
+        } else if (key == KeyEvent.VK_A) {
+            left = false;
+        } else if (key == KeyEvent.VK_D) {
+            right = false;
+        }
+    }
+
+
+    @Override
+    public void run() {
+        // Not used here, but required by Runnable
     }
 }
