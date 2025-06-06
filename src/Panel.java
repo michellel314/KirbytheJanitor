@@ -18,7 +18,6 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     private BufferedImage background3;
     private BufferedImage background4;
     private BufferedImage homescreen;
-    private int backgroundX;
     private int cameraX = 0;
     private final int WIDTH = 800;
     private final int HEIGHT = 600;
@@ -33,6 +32,9 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     private boolean checkpointReached = false;
     private boolean canScrollBeyondCheckpoint = false;
     private final int requiredTrash = 5;  // Number of trash Kirby must collect before unlocking scrolling beyond checkpoint
+    private int currentCheckPoint = 0;
+    private int[] checkpointScores = {5, 10, 15, 20, 25};
+
 
     public Panel(){
         kirby = new Kirby(200, 300);
@@ -87,67 +89,53 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         else if (right) dx = 4;
 
         // Check checkpoint crossing
-        if (!checkpointReached && kirby.getX() >= 600) {
-            checkpointReached = true;
-            backgroundScrolling = false; // lock scrolling at checkpoint
+        int checkpointLimitX = 0;
+        for(int i = 0; i <= currentCheckPoint && i < backgroundList.size(); i++){
+            checkpointLimitX += backgroundList.get(i).getWidth();
         }
 
-        // Unlock scrolling beyond checkpoint if enough trash collected
-        if (checkpointReached && kirby.getScore() >= requiredTrash * 100) {
-            canScrollBeyondCheckpoint = true;
+        if(currentCheckPoint < backgroundList.size() - 1 && kirby.getScore() >= checkpointScores[currentCheckPoint]){
+            currentCheckPoint++;
         }
 
+        backgroundScrolling = currentCheckPoint > 0;
         // Movement & scrolling logic:
         if (!backgroundScrolling) {
             // Kirby moves freely until background scrolling starts
             kirby.move(dx, 0);
-            if (kirby.getX() > 400 && !checkpointReached) {
-                backgroundScrolling = true;
+            if(kirby.getX() < 0){
+                kirby.setPosition(0, kirby.getY());
+            }
+            if (kirby.getX() > checkpointLimitX - 100) {
+               kirby.setPosition(checkpointLimitX - 100, kirby.getY());
             }
         } else {
-            if (canScrollBeyondCheckpoint) {
-                // Scroll background and trash oppositely to Kirby movement to simulate camera following
-                cameraX += dx;
-                for (GoldenTrash t : trashList) {
-                    t.scrollwithBackground(-dx); // scroll trash opposite to movement
-                }
-                // Clamp cameraX here so it doesn't go too far left or right
-                int totalBackgroundWidth = 0;
-                for (BufferedImage bg : backgroundList) {
-                    totalBackgroundWidth += bg.getWidth();
-                }
+            cameraX += dx;
 
-                if (cameraX < 0) {
-                    cameraX = 0;
-                } else if (cameraX > totalBackgroundWidth - WIDTH) {
-                    cameraX = totalBackgroundWidth - WIDTH;
-                }
-            } else {
-                // Can't scroll beyond checkpoint, Kirby can only move to a limit
-                kirby.move(dx, 0);
-                if (kirby.getX() > 700) kirby.setPosition(700, kirby.getY());
+            int maxCameraX  = checkpointLimitX - WIDTH;
+            if(cameraX < 0){
+                cameraX = 0;
+            }
+            if(cameraX > maxCameraX){
+                cameraX = maxCameraX;
+            }
+
+            int viewX = kirby.getX() + dx;
+            if(viewX < 100){
+                kirby.setPosition(cameraX + 100, kirby.getY());
+            }
+            if(viewX > 700){
+                kirby.setPosition(cameraX + 700, kirby.getY());
+            }
+            kirby.setPosition(viewX, kirby.getY());
+            for(GoldenTrash t : trashList){
+                t.scrollwithBackground(-dx);
             }
         }
-
-        // Camera boundary enforcement to keep Kirby in view (optional, improves smoothness)
-        int kirbyX = kirby.getX();
-        int leftBound = 200;
-        int rightBound = 600;
-
-        if (kirbyX < leftBound) {
-            int diff = leftBound - kirbyX;
-            cameraX -= diff;
-            kirby.setPosition(leftBound, kirby.getY());
-        } else if (kirbyX > rightBound) {
-            int diff = kirbyX - rightBound;
-            cameraX += diff;
-            kirby.setPosition(rightBound, kirby.getY());
-        }
-
         kirby.updateVerticalMovement();
         kirby.updateAnimation();
 
-        if (kirby.getHealth() <= 0) {
+        if(kirby.getHealth() <= 0){
             gameState = "GAME_OVER";
         }
         checkTrashCollision();
