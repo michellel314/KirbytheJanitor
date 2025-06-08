@@ -4,22 +4,23 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import javax.imageio.ImageIO;
+
 public class Kirby {
     private int health;
     private int dx = 0;
     private int x;
+    private int worldX;
     private int y;
-    private int speed = 4;
     private int frameIndex = 0;
-    private boolean facingRight = true;
+    private boolean facingRight = true;  // Use only this for direction
+    private boolean facingLeft = false;
     private boolean isEating = false;
     private int score;
     private String animationState = "walk";
     private ArrayList<BufferedImage> eating;
     private ArrayList<BufferedImage> walkFrames;
     private ArrayList<BufferedImage> jumpingFrames;
-    private int currentFrame;
-    private int frameCounter;
+    private int frameCounter = 0;
     public Vacuum vacuum;
     private int velocityY = 0;
     private boolean isJumping = false;
@@ -37,7 +38,6 @@ public class Kirby {
         this.y = y;
         vacuum = new Vacuum(1);
         score = 0;
-        frameIndex = 0;
         walkFrames = new ArrayList<>();
         eating = new ArrayList<>();
         jumpingFrames = new ArrayList<>();
@@ -59,7 +59,7 @@ public class Kirby {
     public void loadEatingFrames(String folderPath, int frameCount){
         eating.clear();
         for(int i = 0; i < frameCount; i++){
-            String fileName = folderPath + "/tile00" + i + ".png";
+            String fileName = String.format("%s/tile00%d.png", folderPath, i);
             try{
                 BufferedImage frame = ImageIO.read(new File(fileName));
                 eating.add(frame);
@@ -72,7 +72,7 @@ public class Kirby {
     public void loadJumpingFrames(String folderPath, int frameCount){
         jumpingFrames.clear();
         for (int i = 0; i < frameCount; i++) {
-            String fileName = folderPath + "/tile00" + i + ".png";
+            String fileName = String.format("%s/tile00%d.png", folderPath, i);
             try {
                 BufferedImage frame = ImageIO.read(new File(fileName));
                 jumpingFrames.add(frame);
@@ -91,49 +91,74 @@ public class Kirby {
     }
 
     public void move(int dx, int dy) {
-        this.dx = dx;  // Store so updateAnimation knows if Kirby is moving
-        x += dx;
-        y += dy;
+        this.dx = dx;
+        this.worldX += dx;
+        this.x += dx;   // move Kirby's screen position too
+        this.y += dy;
 
-        if (dx > 0) facingRight = true;
-        else if (dx < 0) facingRight = false;
+        if (dx > 0) {
+            facingRight = true;
+        } else if (dx < 0) {
+            facingRight = false;
+        }
 
-        if (!isJumping() && !isEating) {
+        if (!isJumping && !isEating) {
             if (dx != 0) {
                 setAnimationState("walk");
             } else {
-                // Optional: idle animation or stand still frame
                 setAnimationState("walk");
-                frameIndex = 0; // reset to idle frame
+                frameIndex = 0;
             }
         }
     }
 
-    public void updateVerticalMovement(){
+    public void updateVerticalMovement() {
         if (y < GROUND_Y || isJumping) {
             velocityY += GRAVITY;
             y += velocityY;
-
-            if (!isEating) {
-                setAnimationState("jump");
-            }
-
-            frameCounter++;
-            if (frameCounter >= 5) {
-                frameCounter = 0;
-                frameIndex++;
-                if (frameIndex >= jumpingFrames.size()) {
-                    frameIndex = jumpingFrames.size() - 1; // Hold last jump frame
-                }
-            }
 
             if (y >= GROUND_Y) {
                 y = GROUND_Y;
                 isJumping = false;
                 velocityY = 0;
-                jumpCount = 0; // Reset jump count on landing
+                jumpCount = 0;
                 if (!isEating) setAnimationState("walk");
+            } else {
+                // While in air, ensure jump animation active
+                if (!isEating) setAnimationState("jump");
             }
+        }
+    }
+
+    public void updateAnimation() {
+        frameCounter++;
+
+        if (isEating) {
+            if (frameCounter >= 10) {
+                frameCounter = 0;
+                frameIndex++;
+                if (frameIndex >= eating.size()) {
+                    isEating = false;
+                    setAnimationState("walk");
+                }
+            }
+        } else if (isJumping) {
+            if (frameCounter >= 10) {
+                frameCounter = 0;
+                frameIndex++;
+                if (frameIndex >= jumpingFrames.size()) {
+                    frameIndex = jumpingFrames.size() - 1; // hold last jump frame
+                }
+            }
+        } else if (dx != 0) {
+            if (frameCounter >= 10) {
+                frameCounter = 0;
+                frameIndex++;
+                if (frameIndex >= walkFrames.size()) frameIndex = 0;
+            }
+        } else {
+            frameIndex = 0;
+            frameCounter = 0;
         }
     }
 
@@ -148,11 +173,14 @@ public class Kirby {
         } else if (!walkFrames.isEmpty()) {
             frame = walkFrames.get(frameIndex % walkFrames.size());
         }
+
         if (frame != null) {
-            if (facingRight) {
-                g.drawImage(frame, x, y, null);
-            } else {
+            if (!facingRight) {
+                // Flip horizontally if facing left
                 g.drawImage(frame, x + frame.getWidth(), y, -frame.getWidth(), frame.getHeight(), null);
+            } else {
+                // Normal draw facing right
+                g.drawImage(frame, x, y, null);
             }
         }
     }
@@ -165,14 +193,13 @@ public class Kirby {
         }
     }
 
-    // Double jump logic
     public void jump() {
-        if (jumpCount < maxJumps && !isEating) {  // <- add !isEating
+        if (jumpCount < maxJumps && !isEating) {
             velocityY = JUMP_STRENGTH;
             isJumping = true;
             jumpCount++;
             setAnimationState("jump");
-            frameIndex = 0; // reset jump animation frames on jump start
+            frameIndex = 0;
             frameCounter = 0;
         }
     }
@@ -186,85 +213,51 @@ public class Kirby {
         }
     }
 
-    public void updateAnimation(){
-        frameCounter++;
+    // Getters and setters for positions, states, health, etc.
+    public int getX() { return x; }
+    public int getY() { return y; }
+    public int getMaxJumps(){ return maxJumps;}
+    public int getScore() { return score; }
+    public boolean isJumping() { return isJumping; }
+    public boolean isEating() { return isEating; }
+    public int getHealth() { return health; }
+    public int getJumpCount() { return jumpCount; }
+    public String getAnimationState() { return animationState; }
+    public int getWorldX() { return worldX; }
+    public void setWorldX(int worldX) { this.worldX = worldX; }
+    public void setX(int newX) { x = newX; }
+    public void setY(int newY) { y = newY; }
+    public void setFacingLeft(boolean t){
+        facingLeft = t;
+    }
+    public void setPosition(int newX, int newY) { x = newX; y = newY; }
+    public void setDx(int newDx) { dx = newDx; }
 
-        if (animationState.equals("eat")) {
-            if (frameCounter >= 10) {
-                frameCounter = 0;
-                frameIndex++;
-                if (frameIndex >= eating.size()) {
-                    isEating = false;
-                    setAnimationState("walk");  // Return to walk after done eating
-                }
-            }
+    public int getWidth() {
+        BufferedImage frame = null;
 
-        } else if (animationState.equals("walk")) {
-            if (dx != 0) {
-                if (frameCounter >= 10) {
-                    frameCounter = 0;
-                    frameIndex++;
-                    if (frameIndex >= walkFrames.size()) {
-                        frameIndex = 1;
-                    }
-                }
-            } else {
-                frameIndex = 0;
-                frameCounter = 0;
-            }
+        if (isEating && !eating.isEmpty()) {
+            frame = eating.get(frameIndex % eating.size());
+        } else if (animationState.equals("jump") && !jumpingFrames.isEmpty()) {
+            frame = jumpingFrames.get(frameIndex % jumpingFrames.size());
+        } else if (!walkFrames.isEmpty()) {
+            frame = walkFrames.get(frameIndex % walkFrames.size());
+        }
 
-        } else if (animationState.equals("jump")) {
-            if (frameCounter >= 10) {
-                frameCounter = 0;
-                frameIndex++;
-                if (frameIndex >= jumpingFrames.size()) {
-                    frameIndex = jumpingFrames.size() - 1;
-                }
-            }
+        if (frame != null) {
+            return frame.getWidth();
+        }
+        return 77; // Default fallback width
+    }
+
+    public void collectTrash(boolean isExplosive) {
+        if (isExplosive) {
+            takeDamage(30);
+        } else {
+            score += 100;
         }
     }
-    public int getX() {
-        return x;
-    }
 
-    public int getY() {
-        return y;
-    }
-
-    public int getScore() {
-        return score;
-    }
-
-    public boolean isJumping() {
-        return isJumping;
-    }
-
-    public boolean isEating(){
-        return animationState.equals("eat");
-    }
-
-    public int getHealth() {
-        return health;
-    }
-
-    public int getJumpCount(){
-        return jumpCount;
-    }
-    public String getAnimationState(){
-        return animationState;
-    }
-
-    public final int getMaxJumps(){
-        return maxJumps;
-    }
-    public void setPosition(int newX, int newY) {
-        x = newX;
-        y = newY;
-    }
-
-    public void collectTrash() {
-        score += 100;
-    }
 
     public void takeDamage(int amount) {
         health -= amount;
@@ -276,27 +269,30 @@ public class Kirby {
     public void resetJump() {
         jumpCount = 0;
         isJumping = false;
-        velocityY = JUMP_STRENGTH;
+        velocityY = 0;
     }
 
     public void resetAnimation() {
-        animationState = "walk"; // or default state
+        animationState = "walk";
         frameIndex = 0;
         isEating = false;
         isJumping = false;
-        // reset any other animation-related flags or timers here
+        frameCounter = 0;
     }
 
+    public void setFacingRight(boolean facingRight) {
+        this.facingRight = facingRight;
+    }
 
-    public void resetHealth(){
+    public void resetHealth() {
         health = 100;
     }
 
-    public void resetScore(){
+    public void resetScore() {
         score = 0;
     }
 
-    public void resetState(){
+    public void resetState() {
         animationState = "walk";
     }
 }

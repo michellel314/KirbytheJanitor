@@ -8,39 +8,37 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
-public class Panel extends JPanel implements Runnable, KeyListener{
+public class Panel extends JPanel implements Runnable, KeyListener {
     private ArrayList<GoldenTrash> trashList = new ArrayList<>();
     private ArrayList<BufferedImage> backgroundList = new ArrayList<>();
-    private BufferedImage kirbyK;
-    private BufferedImage background;
-    private BufferedImage background1;
-    private BufferedImage background2;
-    private BufferedImage background3;
-    private BufferedImage background4;
     private BufferedImage homescreen;
-    private int cameraX = 0;
     private final int WIDTH = 800;
     private final int HEIGHT = 600;
+    private boolean leftPressed = false;
+    private boolean rightPressed = false;
     private Kirby kirby;
-    private boolean up;
-    private boolean down;
-    private boolean left;
-    private boolean right;
-    private boolean backgroundScrolling = false;
+    private int cameraX = 0;
     private String gameState = "HOME";
     private JButton start;
-    private boolean checkpointReached = false;
-    private boolean canScrollBeyondCheckpoint = false;
-    private final int requiredTrash = 5;  // Number of trash Kirby must collect before unlocking scrolling beyond checkpoint
-    private int currentCheckPoint = 0;
-    private int[] checkpointScores = {5, 10, 15, 20, 25};
 
+    private boolean[] checkpointsUnlocked = new boolean[5]; // Tracks which backgrounds are accessible
+    private int currentCheckpoint = 0;
+    private int trashCollectedForCheckpoint = 0;
+    private final int[] trashRequirements = {5, 10, 15, 20, 25};
+    private String checkpointMessage = "";
+    private int messageTimer = 0;
+    // Constants for checkpoint size and Kirby screen X clamp
+    private final int CHECKPOINT_WIDTH = 0; // Will calculate dynamically from backgrounds
+    private final int KIRBY_SCREEN_X_MIN = 100;
+    private final int KIRBY_SCREEN_X_MAX = WIDTH - 100;
 
-    public Panel(){
+    public Panel() {
         kirby = new Kirby(200, 300);
         kirby.loadWalkingFrames("src/Visuals", 4);
         kirby.loadEatingFrames("src/Eating_Animation", 5);
         kirby.loadJumpingFrames("src/Jumping_Animation", 5);
+        checkpointsUnlocked[0] = true;
+        checkpointMessage = "Area 1 Unlocked! Collect 5 trash";
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);
         addKeyListener(this);
@@ -59,17 +57,11 @@ public class Panel extends JPanel implements Runnable, KeyListener{
 
         try {
             homescreen = ImageIO.read(new File("src/Visuals/HOMESCREEN.png"));
-            background = ImageIO.read(new File(("src/Visuals/Dreamscape.jpg")));
-            background1 = ImageIO.read(new File("src/Visuals/campfire.jpg"));
-            background2 = ImageIO.read(new File("src/Visuals/Forest.jpg"));
-            background3 = ImageIO.read(new File("src/Visuals/Sky.jpg"));
-            background4 = ImageIO.read(new File("src/Visuals/Sky_2.jpg"));
-
-            backgroundList.add(background);
-            backgroundList.add(background1);
-            backgroundList.add(background2);
-            backgroundList.add(background3);
-            backgroundList.add(background4);
+            backgroundList.add(ImageIO.read(new File("src/Visuals/Dreamscape.jpg")));
+            backgroundList.add(ImageIO.read(new File("src/Visuals/campfire.jpg")));
+            backgroundList.add(ImageIO.read(new File("src/Visuals/Forest.jpg")));
+            backgroundList.add(ImageIO.read(new File("src/Visuals/Sky.jpg")));
+            backgroundList.add(ImageIO.read(new File("src/Visuals/Sky_2.jpg")));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -82,67 +74,219 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     }
 
     public void update() {
-        if (!gameState.equals("PLAYING")) return;
-
+        if (!gameState.equals("PLAYING")){
+            return;
+        }
+        for (GoldenTrash t : trashList) {
+            t.update();
+        }
         int dx = 0;
-        if (left) dx = -4;
-        else if (right) dx = 4;
+        if (leftPressed) {
+            dx = -4;
+            kirby.setFacingLeft(true);
+        }
+        else if (rightPressed) {
+            dx = 4;
+            kirby.setFacingLeft(false);
 
-        // Check checkpoint crossing
-        int checkpointLimitX = 0;
-        for(int i = 0; i <= currentCheckPoint && i < backgroundList.size(); i++){
-            checkpointLimitX += backgroundList.get(i).getWidth();
+            // Boundary check
+            int kirbyRightEdge = kirby.getWorldX() + kirby.getWidth();
+            if (kirbyRightEdge >= getTotalWorldWidth() || (kirbyRightEdge > getCheckpointBoundary() && (currentCheckpoint < checkpointsUnlocked.length - 1 && !checkpointsUnlocked[currentCheckpoint + 1]))) {
+                dx = 0;
+            }
+        }
+        kirby.setDx(dx);
+
+        // Calculate total width of all backgrounds combined
+        int totalBackgroundWidth = 0;
+        for (BufferedImage bg : backgroundList) {
+            totalBackgroundWidth += bg.getWidth();
         }
 
-        if(currentCheckPoint < backgroundList.size() - 1 && kirby.getScore() >= checkpointScores[currentCheckPoint]){
-            currentCheckPoint++;
-        }
+        // Kirby worldX before movement
+        int kirbyWorldX = cameraX + kirby.getX();
 
-        backgroundScrolling = currentCheckPoint > 0;
-        // Movement & scrolling logic:
-        if (!backgroundScrolling) {
-            // Kirby moves freely until background scrolling starts
-            kirby.move(dx, 0);
-            if(kirby.getX() < 0){
-                kirby.setPosition(0, kirby.getY());
-            }
-            if (kirby.getX() > checkpointLimitX - 100) {
-               kirby.setPosition(checkpointLimitX - 100, kirby.getY());
-            }
+        // Update Kirby worldX by dx
+        kirbyWorldX += dx;
+
+        // Clamp Kirby worldX inside total background
+        kirbyWorldX = Math.max(0, Math.min(totalBackgroundWidth - kirby.getWidth(), kirbyWorldX));
+
+        // Clamp Kirby's screen X to range on screen
+        int kirbyScreenX = kirbyWorldX - cameraX;
+        if (currentCheckpoint == 0) {
+            // No scrolling yet: Kirby stays fully inside screen bounds
+            kirbyScreenX = Math.max(0, Math.min(WIDTH - kirby.getWidth(), kirbyScreenX));
+            cameraX = 0;
+            kirbyWorldX = kirbyScreenX; // worldX == screenX if no scrolling
         } else {
-            cameraX += dx;
+            // Scroll background if past first checkpoint
+            kirbyScreenX = Math.max(KIRBY_SCREEN_X_MIN, Math.min(KIRBY_SCREEN_X_MAX - kirby.getWidth(), kirbyScreenX));
 
-            int maxCameraX  = checkpointLimitX - WIDTH;
-            if(cameraX < 0){
-                cameraX = 0;
-            }
-            if(cameraX > maxCameraX){
-                cameraX = maxCameraX;
-            }
-
-            int viewX = kirby.getX() + dx;
-            if(viewX < 100){
-                kirby.setPosition(cameraX + 100, kirby.getY());
-            }
-            if(viewX > 700){
-                kirby.setPosition(cameraX + 700, kirby.getY());
-            }
-            kirby.setPosition(viewX, kirby.getY());
-            for(GoldenTrash t : trashList){
-                t.scrollwithBackground(-dx);
-            }
+            // Update cameraX so Kirby screen position is maintained
+            cameraX = kirbyWorldX - kirbyScreenX;
+            cameraX = Math.max(0, Math.min(cameraX, totalBackgroundWidth - WIDTH));
         }
+
+        // Update Kirby screen position
+        kirby.setPosition(kirbyScreenX, kirby.getY());
+
+        // Update Kirby vertical movement and animation
         kirby.updateVerticalMovement();
         kirby.updateAnimation();
 
-        if(kirby.getHealth() <= 0){
+        // Check collisions with trash using Kirby worldX (cameraX + kirbyScreenX)
+        checkTrashCollision(kirbyWorldX);
+        // Game over condition
+        if (kirby.getHealth() <= 0) {
             gameState = "GAME_OVER";
         }
-        checkTrashCollision();
+    }
+
+    // Respawn trash in the range of the checkpoint background
+    private void respawnTrashForCheckpoint(int checkpoint) {
+        trashList.clear();
+
+        // Calculate checkpoint horizontal range in world coordinates
+        int startX = 0;
+        for (int i = 0; i < checkpoint; i++) {
+            if (i < backgroundList.size()) {
+                startX += backgroundList.get(i).getWidth();
+            }
+        }
+        int endX = startX;
+        if (checkpoint < backgroundList.size()) {
+            endX += backgroundList.get(checkpoint).getWidth();
+        }
+
+        int trashCount = trashRequirements[checkpoint];
+        int maxAttempts = 200;
+        int spawned = 0;
+
+        while (spawned < trashCount) {
+            boolean placed = false;
+            int attempts = 0;
+
+            while (!placed && attempts < maxAttempts) {
+                attempts++;
+                int newX = (int) (Math.random() * (endX - startX - 80)) + startX + 40;
+                int newY = (int) (Math.random() * 200 + 300);
+
+                if (!isTooCloseInRange(newX, newY)) {
+                    trashList.add(new GoldenTrash(newX, newY));
+                    placed = true;
+                }
+            }
+            if (!placed) break;
+            spawned++;
+        }
+    }
+
+    // Check collisions between Kirby and trash
+    private void checkTrashCollision(int kirbyWorldX) {
+        for (int i = 0; i < trashList.size(); i++) {
+            GoldenTrash t = trashList.get(i);
+            int dx = Math.abs(kirbyWorldX - t.getWorldX());
+            int dy = Math.abs(kirby.getY() - t.getY());
+
+            if (dx < 50 && dy < 50 && kirby.getAnimationState().equals("eat")) {
+                if (t.isExplosive()) {
+                    t.triggerExplosion(); // Start flash effect
+                    if (!kirby.vacuum.resistExplosion()) {
+                        kirby.takeDamage(30);
+                    }
+                    // Remove after flash completes
+                    if (t.getExplosionFrames() <= 0) {
+                        trashList.remove(i);
+                        i--;
+                    }
+                } else {
+                    kirby.collectTrash(false);
+                    trashCollectedForCheckpoint++;
+                    trashList.remove(i);
+                    i--;
+                    respawnOneTrashAtCheckpoint();
+
+                    if (trashCollectedForCheckpoint >= trashRequirements[currentCheckpoint]) {
+                        unlockNextCheckpoint();
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    private void unlockNextCheckpoint() {
+        trashCollectedForCheckpoint = 0;
+        currentCheckpoint = (currentCheckpoint + 1) % 5;
+        checkpointsUnlocked[currentCheckpoint] = true;
+
+        // Set visual message
+        checkpointMessage = "Area " + (currentCheckpoint+1) + " Unlocked! Collect " +
+                trashRequirements[currentCheckpoint] + " trash";
+        messageTimer = 180; // Show for 3 seconds (60 frames/sec * 3)
+    }
+
+    // Respawn a single trash in the current checkpoint background range
+    private void respawnOneTrashAtCheckpoint() {
+        int startX = 0;
+        for (int j = 0; j < currentCheckpoint; j++) {
+            startX += backgroundList.get(j).getWidth();
+        }
+        int endX = startX;
+        if (currentCheckpoint < backgroundList.size()) {
+            endX += backgroundList.get(currentCheckpoint).getWidth();
+        }
+
+        int maxAttempts = 100;
+        boolean placed = false;
+        while (!placed && maxAttempts > 0) {
+            maxAttempts--;
+            int newX = (int) (Math.random() * (endX - startX - 80)) + startX + 40;
+            int newY = (int) (Math.random() * 200 + 300);
+
+            if (!isTooCloseInRange(newX, newY)) {
+                trashList.add(new GoldenTrash(newX, newY));
+                placed = true;
+            }
+        }
+    }
+
+    private int getTotalWorldWidth() {
+        int totalWidth = 0;
+        for (BufferedImage bg : backgroundList) {
+            totalWidth += bg.getWidth();
+        }
+        return totalWidth;
+    }
+
+    private int getCheckpointBoundary() {
+        int boundary = 0;
+        for (int i = 0; i <= currentCheckpoint; i++) {
+            boundary += backgroundList.get(i % backgroundList.size()).getWidth();
+        }
+        return boundary;
+    }
+
+    // Check if new trash position is too close to existing trash
+    private boolean isTooCloseInRange(int x, int y) {
+        int minDistance = 50;
+        for (GoldenTrash existing : trashList) {
+            int ex = existing.getWorldX() + 20;
+            int ey = existing.getY() + 20;
+
+            int distX = ex - (x + 20);
+            int distY = ey - (y + 20);
+            double distance = Math.sqrt(distX * distX + distY * distY);
+            if (distance < minDistance) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
-    protected void paintComponent(Graphics g) {
+    public void paintComponent(Graphics g) {
         super.paintComponent(g);
 
         if (gameState.equals("HOME")) {
@@ -151,32 +295,41 @@ public class Panel extends JPanel implements Runnable, KeyListener{
             g.setColor(Color.pink);
             g.drawString("Kirby the Janitor", 270, 200);
 
-            // Draw Kirby home image here if you have it
-
         } else if (gameState.equals("PLAYING")) {
+            // Draw backgrounds horizontally offset by cameraX
             int totalWidth = 0;
             for (BufferedImage bg : backgroundList) {
                 totalWidth += bg.getWidth();
             }
-
-            // Loop cameraX to keep within total background width (for seamless looping)
-            int loopedCameraX = cameraX % totalWidth;
-
-            int currentX = -loopedCameraX;
-
-            // Draw backgrounds repeatedly until screen width is covered
-            while (currentX < WIDTH) {
-                for (BufferedImage bg : backgroundList) {
-                    g.drawImage(bg, currentX, 0, null);
-                    currentX += bg.getWidth();
-                    if (currentX >= WIDTH) break;
-                }
+            // Calculate start position to draw backgrounds
+            int drawX = -cameraX;
+            int i = 0;
+            while (drawX < WIDTH) {
+                if (i >= backgroundList.size()) i = 0; // loop backgrounds if needed
+                BufferedImage bg = backgroundList.get(i);
+                g.drawImage(bg, drawX, 0, null);
+                drawX += bg.getWidth();
+                i++;
             }
 
-            // Draw trash and Kirby as usual
+            // Draw trash relative to cameraX
             for (GoldenTrash t : trashList) {
                 t.draw(g, cameraX);
             }
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.BOLD, 16));
+            g.drawString("Area " + (currentCheckpoint+1) + ": " +
+                    trashCollectedForCheckpoint + "/" +
+                    trashRequirements[currentCheckpoint], 20, 30);
+
+            // Checkpoint unlock message (center screen)
+            if (messageTimer > 0) {
+                g.setColor(Color.YELLOW);
+                g.setFont(new Font("Arial", Font.BOLD, 24));
+                int msgWidth = g.getFontMetrics().stringWidth(checkpointMessage);
+                g.drawString(checkpointMessage, getWidth()/2 - msgWidth/2, getHeight()/2);
+            }
+
             kirby.draw(g);
 
         } else if (gameState.equals("GAME_OVER")) {
@@ -194,8 +347,7 @@ public class Panel extends JPanel implements Runnable, KeyListener{
 
     public void resetGame() {
         cameraX = 0;
-        checkpointReached = false;
-        canScrollBeyondCheckpoint = false;
+        currentCheckpoint = 0;
         kirby.setPosition(200, 500);
         kirby.resetHealth();
         kirby.resetScore();
@@ -204,81 +356,12 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         kirby.resetAnimation();
 
         trashList.clear();
-        for (int i = 0; i < 5; i++) {
-            spawnNonOverlappingTrash();
-        }
-    }
-
-    private void checkTrashCollision() {
-        int kirbyWorldX = kirby.getX() + cameraX;
-        int kirbyY = kirby.getY();
-
-        for (int i = 0; i < trashList.size(); i++) {
-            GoldenTrash t = trashList.get(i);
-            int dx = Math.abs(kirbyWorldX - t.getX());
-            int dy = Math.abs(kirbyY - t.getY());
-
-            if (dx < 50 && dy < 50 && kirby.getAnimationState().equals("eat")) {
-                boolean exploded = Math.random() < 0.3;
-
-                if (exploded && !kirby.vacuum.resistExplosion()) {
-                    kirby.takeDamage(30);
-                }
-
-                kirby.collectTrash();
-                trashList.remove(i);
-                i--;
-
-                // Spawn new trash in world coordinates
-                spawnNonOverlappingTrash();
-            }
-        }
-    }
-
-    private boolean isTooClose(int x, int y) {
-        int minDistance = 50; // Minimum distance between trash centers (adjust as needed)
-
-        for (GoldenTrash existing : trashList) {
-            int ex = existing.getX() + 20; // center X of existing trash (assuming 40 width)
-            int ey = existing.getY() + 20; // center Y of existing trash
-
-            int distX = ex - (x + 20);
-            int distY = ey - (y + 20);
-
-            double distance = Math.sqrt(distX * distX + distY * distY);
-
-            if (distance < minDistance) {
-                return true; // Too close, overlapping or nearly so
-            }
-        }
-        return false; // Good to place here
-    }
-
-    private void spawnNonOverlappingTrash() {
-        int maxAttempts = 200;
-        int attempts = 0;
-        boolean placed = false;
-
-        while (!placed && attempts < maxAttempts) {
-            attempts++;
-
-            int newX = (int) (Math.random() * (WIDTH - 80)) + cameraX + 40;
-            int newY = (int) (Math.random() * 200 + 300);
-
-            if (!isTooClose(newX, newY)) {
-                trashList.add(new GoldenTrash(newX, newY));
-                placed = true;
-            }
-        }
-
-        if (!placed) {
-            System.out.println("Warning: Could not place trash without overlapping after max attempts");
-        }
+        respawnTrashForCheckpoint(0);
     }
 
     @Override
     public void keyTyped(KeyEvent e) {
-        // no op
+        // no-op
     }
 
     @Override
@@ -288,15 +371,12 @@ public class Panel extends JPanel implements Runnable, KeyListener{
         if (gameState.equals("PLAYING")) {
             if (key == KeyEvent.VK_W) {
                 if (kirby.getJumpCount() < kirby.getMaxJumps()) {
-                    up = true;
                     kirby.jump();
                 }
-            } else if (key == KeyEvent.VK_S) {
-                down = true;
             } else if (key == KeyEvent.VK_A) {
-                left = true;
+                leftPressed = true;    // Set flag here
             } else if (key == KeyEvent.VK_D) {
-                right = true;
+                rightPressed = true;   // Set flag here
             } else if (key == KeyEvent.VK_E) {
                 if (!kirby.isEating()) {
                     kirby.startEating();
@@ -316,21 +396,15 @@ public class Panel extends JPanel implements Runnable, KeyListener{
     public void keyReleased(KeyEvent e) {
         int key = e.getKeyCode();
 
-        if (key == KeyEvent.VK_W) {
-            up = false;
-        } else if (key == KeyEvent.VK_S) {
-            down = false;
-        } else if (key == KeyEvent.VK_A) {
-            left = false;
-        }
-        if(key == KeyEvent.VK_D){
-            right = false;
+        if (key == KeyEvent.VK_A) {
+            leftPressed = false;  // Reset flag here
+        } else if (key == KeyEvent.VK_D) {
+            rightPressed = false; // Reset flag here
         }
     }
 
-
     @Override
     public void run() {
-        // Not used here, but required by Runnable
+        // Required by Runnable, not used
     }
 }
