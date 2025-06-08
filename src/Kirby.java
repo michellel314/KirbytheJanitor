@@ -26,6 +26,8 @@ public class Kirby {
     private final int GROUND_Y = 495;
     private final int JUMP_STRENGTH = -15;
     private final double GRAVITY = 1;
+    private int damageCooldown = 0;
+    private final int DAMAGE_COOLDOWN_TIME = 10;
 
     // Double jump variables
     private int jumpCount = 0;
@@ -249,7 +251,7 @@ public class Kirby {
 
     public void collectTrash(boolean isExplosive) {
         if (isExplosive) {
-            takeDamage(30);
+            takeDamage(10);
         } else {
             score += 100;
         }
@@ -257,9 +259,16 @@ public class Kirby {
 
 
     public void takeDamage(int amount) {
-        health -= amount;
-        if (health <= 0) {
-            health = 0;
+        if (damageCooldown == 0) {
+            health -= amount;
+            if (health < 0) health = 0;
+            damageCooldown = DAMAGE_COOLDOWN_TIME;  // reset cooldown
+        }
+    }
+
+    public void updateDamageCooldown(){
+        if(damageCooldown > 0){
+            damageCooldown--;
         }
     }
 

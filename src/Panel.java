@@ -31,6 +31,7 @@ public class Panel extends JPanel implements Runnable, KeyListener {
     private final int CHECKPOINT_WIDTH = 0; // Will calculate dynamically from backgrounds
     private final int KIRBY_SCREEN_X_MIN = 100;
     private final int KIRBY_SCREEN_X_MAX = WIDTH - 100;
+    private boolean isLoadingCheckpoint = false;
 
     public Panel() {
         kirby = new Kirby(200, 300);
@@ -74,67 +75,105 @@ public class Panel extends JPanel implements Runnable, KeyListener {
     }
 
     public void update() {
-        if (!gameState.equals("PLAYING")){
+        if (!gameState.equals("PLAYING")) {
             return;
         }
+
+        // Countdown checkpoint message timer
+        if (messageTimer > 0) {
+            messageTimer--;
+            if (messageTimer == 0) checkpointMessage = "";
+        }
+
         for (GoldenTrash t : trashList) {
             t.update();
         }
+
+        kirby.updateDamageCooldown();
+
         int dx = 0;
         if (leftPressed) {
             dx = -4;
-        }
-        else if (rightPressed) {
+        } else if (rightPressed) {
             dx = 4;
-
-            // Boundary check
-            int kirbyRightEdge = kirby.getWorldX() + kirby.getWidth();
-            if (kirbyRightEdge >= getTotalWorldWidth() || (kirbyRightEdge > getCheckpointBoundary() && (currentCheckpoint < checkpointsUnlocked.length - 1 && !checkpointsUnlocked[currentCheckpoint + 1]))) {
-                dx = 0;
-            }
         }
-        kirby.move(dx, 0);
 
         // Calculate total width of all backgrounds combined
-        int totalBackgroundWidth = 0;
-        for (BufferedImage bg : backgroundList) {
-            totalBackgroundWidth += bg.getWidth();
-        }
+        int totalBackgroundWidth = getTotalWorldWidth();
 
-        // Kirby worldX before movement
+        // Calculate Kirby world X before moving
         int kirbyWorldX = cameraX + kirby.getX();
 
-        // Update Kirby worldX by dx
-        kirbyWorldX += dx;
+        // Predict next Kirby worldX after movement
+        int nextKirbyWorldX = kirbyWorldX + dx;
 
-        // Clamp Kirby worldX inside total background
-        kirbyWorldX = Math.max(0, Math.min(totalBackgroundWidth - kirby.getWidth(), kirbyWorldX));
+        // Calculate current checkpoint boundary X position
+        int checkpointBoundaryX = getCheckpointBoundary(currentCheckpoint);
 
-        // Clamp Kirby's screen X to range on screen
-        int kirbyScreenX = kirbyWorldX - cameraX;
-        if (currentCheckpoint == 0) {
+        // Prevent Kirby from passing beyond the next checkpoint if not unlocked
+        if (dx > 0) { // moving right
+            if (currentCheckpoint < checkpointsUnlocked.length - 1) {
+                // If next checkpoint is NOT unlocked and Kirby tries to go beyond current boundary
+                if (!checkpointsUnlocked[currentCheckpoint + 1] && nextKirbyWorldX + kirby.getWidth() > checkpointBoundaryX) {
+                    dx = 0;
+                    nextKirbyWorldX = kirbyWorldX; // no movement
+                }
+            }
+        }
+
+        // Clamp Kirby worldX within world bounds
+        nextKirbyWorldX = Math.max(0, Math.min(totalBackgroundWidth - kirby.getWidth(), nextKirbyWorldX));
+
+        // Update Kirby position horizontally based on allowed dx
+        kirby.move(dx, 0);
+
+        // Calculate Kirby screen X relative to camera
+        int kirbyScreenX = nextKirbyWorldX - cameraX;
+
+        // Handle camera scrolling and clamping
+        if (!isLoadingCheckpoint) {
             // No scrolling yet: Kirby stays fully inside screen bounds
             kirbyScreenX = Math.max(0, Math.min(WIDTH - kirby.getWidth(), kirbyScreenX));
-            cameraX = 0;
-            kirbyWorldX = kirbyScreenX; // worldX == screenX if no scrolling
+            cameraX = currentCheckpoint * 800;
+            // Update Kirby position on screen
+            kirby.setPosition(kirbyScreenX, kirby.getY());
         } else {
             // Scroll background if past first checkpoint
             kirbyScreenX = Math.max(KIRBY_SCREEN_X_MIN, Math.min(KIRBY_SCREEN_X_MAX - kirby.getWidth(), kirbyScreenX));
 
             // Update cameraX so Kirby screen position is maintained
-            cameraX = kirbyWorldX - kirbyScreenX;
-            cameraX = Math.max(0, Math.min(cameraX, totalBackgroundWidth - WIDTH));
+            cameraX = nextKirbyWorldX - kirbyScreenX;
+
+            // Clamp cameraX to not scroll beyond next checkpoint boundary if next checkpoint is locked
+            int maxCameraX;
+            if (currentCheckpoint < checkpointsUnlocked.length - 1 && !checkpointsUnlocked[currentCheckpoint + 1]) {
+                maxCameraX = checkpointBoundaryX - WIDTH;
+                if (maxCameraX < 0) maxCameraX = 0; // prevent negative clamp
+            } else {
+                maxCameraX = totalBackgroundWidth - WIDTH;
+            }
+
+            cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
+
+            // Update Kirby position on screen
+            kirby.setPosition(kirbyScreenX, kirby.getY());
         }
 
-        // Update Kirby screen position
-        kirby.setPosition(kirbyScreenX, kirby.getY());
+        if (cameraX == currentCheckpoint * 800) {
+            isLoadingCheckpoint = false;
+        }
 
-        // Update Kirby vertical movement and animation
         kirby.updateVerticalMovement();
         kirby.updateAnimation();
 
-        // Check collisions with trash using Kirby worldX (cameraX + kirbyScreenX)
-        checkTrashCollision(kirbyWorldX);
+        // Check collisions with trash using Kirby world X
+        checkTrashCollision(nextKirbyWorldX);
+
+        // Check if trash collected reached requirement for current checkpoint
+        if (trashCollectedForCheckpoint >= trashRequirements[currentCheckpoint]) {
+            unlockNextCheckpoint();
+        }
+
         // Game over condition
         if (kirby.getHealth() <= 0) {
             gameState = "GAME_OVER";
@@ -146,16 +185,8 @@ public class Panel extends JPanel implements Runnable, KeyListener {
         trashList.clear();
 
         // Calculate checkpoint horizontal range in world coordinates
-        int startX = 0;
-        for (int i = 0; i < checkpoint; i++) {
-            if (i < backgroundList.size()) {
-                startX += backgroundList.get(i).getWidth();
-            }
-        }
-        int endX = startX;
-        if (checkpoint < backgroundList.size()) {
-            endX += backgroundList.get(checkpoint).getWidth();
-        }
+        int startX = currentCheckpoint * WIDTH + 75;
+        int endX = (currentCheckpoint + 1) * WIDTH - 75;
 
         int trashCount = trashRequirements[checkpoint];
         int maxAttempts = 200;
@@ -167,7 +198,7 @@ public class Panel extends JPanel implements Runnable, KeyListener {
 
             while (!placed && attempts < maxAttempts) {
                 attempts++;
-                int newX = (int) (Math.random() * (endX - startX - 80)) + startX + 40;
+                int newX = (int) (Math.random() * (endX - startX)) + (currentCheckpoint * WIDTH);
                 int newY = (int) (Math.random() * 200 + 300);
 
                 if (!isTooCloseInRange(newX, newY)) {
@@ -175,7 +206,6 @@ public class Panel extends JPanel implements Runnable, KeyListener {
                     placed = true;
                 }
             }
-            if (!placed) break;
             spawned++;
         }
     }
@@ -189,15 +219,18 @@ public class Panel extends JPanel implements Runnable, KeyListener {
 
             if (dx < 50 && dy < 50 && kirby.getAnimationState().equals("eat")) {
                 if (t.isExplosive()) {
-                    t.triggerExplosion(); // Start flash effect
+//                    t.triggerExplosion(); // Start flash effect
                     if (!kirby.vacuum.resistExplosion()) {
-                        kirby.takeDamage(30);
+                        kirby.takeDamage(10);
                     }
-                    // Remove after flash completes
-                    if (t.getExplosionFrames() <= 0) {
-                        trashList.remove(i);
-                        i--;
-                    }
+//                    // Remove after flash completes
+//                    if (t.getExplosionFrames() <= 0) {
+//                        trashList.remove(i);
+//                        i--;
+//                    }
+                    trashList.remove(i);
+                    i--;
+                    respawnOneTrashAtCheckpoint();
                 } else {
                     kirby.collectTrash(false);
                     trashCollectedForCheckpoint++;
@@ -215,32 +248,30 @@ public class Panel extends JPanel implements Runnable, KeyListener {
     }
 
     private void unlockNextCheckpoint() {
-        trashCollectedForCheckpoint = 0;
-        currentCheckpoint = (currentCheckpoint + 1) % 5;
-        checkpointsUnlocked[currentCheckpoint] = true;
+        if (currentCheckpoint < checkpointsUnlocked.length - 1) {
+            isLoadingCheckpoint = true;
+            checkpointsUnlocked[currentCheckpoint + 1] = true;
+            currentCheckpoint++;  // Move to next checkpoint
+            trashCollectedForCheckpoint = 0;
 
-        // Set visual message
-        checkpointMessage = "Area " + (currentCheckpoint+1) + " Unlocked! Collect " +
-                trashRequirements[currentCheckpoint] + " trash";
-        messageTimer = 180; // Show for 3 seconds (60 frames/sec * 3)
+            checkpointMessage = "Area " + (currentCheckpoint + 1) + " Unlocked! Collect " +
+                    trashRequirements[currentCheckpoint] + " trash";
+            messageTimer = 180; // 3 seconds message
+
+            respawnTrashForCheckpoint(currentCheckpoint);
+        }
     }
-
     // Respawn a single trash in the current checkpoint background range
     private void respawnOneTrashAtCheckpoint() {
-        int startX = 0;
-        for (int j = 0; j < currentCheckpoint; j++) {
-            startX += backgroundList.get(j).getWidth();
-        }
-        int endX = startX;
-        if (currentCheckpoint < backgroundList.size()) {
-            endX += backgroundList.get(currentCheckpoint).getWidth();
-        }
+
+        int startX = currentCheckpoint * WIDTH + 75;
+        int endX = (currentCheckpoint + 1) * WIDTH - 75;
 
         int maxAttempts = 100;
         boolean placed = false;
         while (!placed && maxAttempts > 0) {
             maxAttempts--;
-            int newX = (int) (Math.random() * (endX - startX - 80)) + startX + 40;
+            int newX = (int) (Math.random() * (endX - startX))+ (currentCheckpoint * WIDTH);
             int newY = (int) (Math.random() * 200 + 300);
 
             if (!isTooCloseInRange(newX, newY)) {
@@ -258,12 +289,9 @@ public class Panel extends JPanel implements Runnable, KeyListener {
         return totalWidth;
     }
 
-    private int getCheckpointBoundary() {
-        int boundary = 0;
-        for (int i = 0; i <= currentCheckpoint; i++) {
-            boundary += backgroundList.get(i % backgroundList.size()).getWidth();
-        }
-        return boundary;
+    private int getCheckpointBoundary(int checkpoint) {
+        int bgWidth = backgroundList.get(0).getWidth();
+        return (checkpoint + 1) * bgWidth;
     }
 
     // Check if new trash position is too close to existing trash
@@ -319,7 +347,8 @@ public class Panel extends JPanel implements Runnable, KeyListener {
             g.drawString("Area " + (currentCheckpoint+1) + ": " +
                     trashCollectedForCheckpoint + "/" +
                     trashRequirements[currentCheckpoint], 20, 30);
-
+            g.drawString("Health: " + kirby.getHealth(), 20, 50);
+            g.drawString("Score: " + kirby.getScore(), 20, 70);
             // Checkpoint unlock message (center screen)
             if (messageTimer > 0) {
                 g.setColor(Color.YELLOW);
@@ -352,7 +381,7 @@ public class Panel extends JPanel implements Runnable, KeyListener {
         kirby.resetState();
         kirby.resetJump();
         kirby.resetAnimation();
-
+        trashCollectedForCheckpoint = 0;
         trashList.clear();
         respawnTrashForCheckpoint(0);
     }
