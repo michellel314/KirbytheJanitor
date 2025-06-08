@@ -83,11 +83,9 @@ public class Panel extends JPanel implements Runnable, KeyListener {
         int dx = 0;
         if (leftPressed) {
             dx = -4;
-            kirby.setFacingLeft(true);
         }
         else if (rightPressed) {
             dx = 4;
-            kirby.setFacingLeft(false);
 
             // Boundary check
             int kirbyRightEdge = kirby.getWorldX() + kirby.getWidth();
@@ -95,7 +93,7 @@ public class Panel extends JPanel implements Runnable, KeyListener {
                 dx = 0;
             }
         }
-        kirby.setDx(dx);
+        kirby.move(dx, 0);
 
         // Calculate total width of all backgrounds combined
         int totalBackgroundWidth = 0;
@@ -374,9 +372,9 @@ public class Panel extends JPanel implements Runnable, KeyListener {
                     kirby.jump();
                 }
             } else if (key == KeyEvent.VK_A) {
-                leftPressed = true;    // Set flag here
+                leftPressed = true;
             } else if (key == KeyEvent.VK_D) {
-                rightPressed = true;   // Set flag here
+                rightPressed = true;
             } else if (key == KeyEvent.VK_E) {
                 if (!kirby.isEating()) {
                     kirby.startEating();

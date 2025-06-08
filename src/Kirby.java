@@ -13,7 +13,6 @@ public class Kirby {
     private int y;
     private int frameIndex = 0;
     private boolean facingRight = true;  // Use only this for direction
-    private boolean facingLeft = false;
     private boolean isEating = false;
     private int score;
     private String animationState = "walk";
@@ -93,7 +92,6 @@ public class Kirby {
     public void move(int dx, int dy) {
         this.dx = dx;
         this.worldX += dx;
-        this.x += dx;   // move Kirby's screen position too
         this.y += dy;
 
         if (dx > 0) {
@@ -103,12 +101,7 @@ public class Kirby {
         }
 
         if (!isJumping && !isEating) {
-            if (dx != 0) {
-                setAnimationState("walk");
-            } else {
-                setAnimationState("walk");
-                frameIndex = 0;
-            }
+           animationState = "walk";
         }
     }
 
@@ -154,7 +147,9 @@ public class Kirby {
             if (frameCounter >= 10) {
                 frameCounter = 0;
                 frameIndex++;
-                if (frameIndex >= walkFrames.size()) frameIndex = 0;
+                if (frameIndex >= walkFrames.size()) {
+                    frameIndex = 1;
+                }
             }
         } else {
             frameIndex = 0;
@@ -168,23 +163,28 @@ public class Kirby {
         // Priority: eating > jumping > walking
         if (isEating && !eating.isEmpty()) {
             frame = eating.get(frameIndex % eating.size());
-        } else if (animationState.equals("jump") && !jumpingFrames.isEmpty()) {
+        }
+        else if (animationState.equals("jump") && !jumpingFrames.isEmpty()) {
             frame = jumpingFrames.get(frameIndex % jumpingFrames.size());
-        } else if (!walkFrames.isEmpty()) {
+        }
+        else if (!walkFrames.isEmpty()) {
             frame = walkFrames.get(frameIndex % walkFrames.size());
         }
 
+        // Draw flipped if facing left
         if (frame != null) {
             if (!facingRight) {
-                // Flip horizontally if facing left
-                g.drawImage(frame, x + frame.getWidth(), y, -frame.getWidth(), frame.getHeight(), null);
+                g.drawImage(frame,
+                        x + frame.getWidth(), // Start drawing from right
+                        y,
+                        -frame.getWidth(),    // Negative width flips image
+                        frame.getHeight(),
+                        null);
             } else {
-                // Normal draw facing right
-                g.drawImage(frame, x, y, null);
+                g.drawImage(frame, x, y, null); // Normal right-facing
             }
         }
     }
-
     public void upgradeVacuum() {
         if (score >= 500 && vacuum.getTier() < 3) {
             score -= 500;
@@ -227,9 +227,6 @@ public class Kirby {
     public void setWorldX(int worldX) { this.worldX = worldX; }
     public void setX(int newX) { x = newX; }
     public void setY(int newY) { y = newY; }
-    public void setFacingLeft(boolean t){
-        facingLeft = t;
-    }
     public void setPosition(int newX, int newY) { x = newX; y = newY; }
     public void setDx(int newDx) { dx = newDx; }
 
