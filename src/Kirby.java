@@ -1,6 +1,7 @@
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.*;
 import java.io.IOException;
 import java.util.ArrayList;
 import javax.imageio.ImageIO;
@@ -12,8 +13,10 @@ public class Kirby {
     private int worldX;
     private int y;
     private int frameIndex = 0;
+    private int highScore = 0;
     private boolean facingRight = true;  // Use only this for direction
     private boolean isEating = false;
+    private boolean hasEatenTrash = false;
     private int score;
     private String animationState = "walk";
     private ArrayList<BufferedImage> eating;
@@ -42,6 +45,8 @@ public class Kirby {
         walkFrames = new ArrayList<>();
         eating = new ArrayList<>();
         jumpingFrames = new ArrayList<>();
+        resetHighScore();
+        loadHighScore();
     }
 
     public void loadWalkingFrames(String folderpath, int frameCount) {
@@ -127,18 +132,18 @@ public class Kirby {
 
     public void updateAnimation() {
         frameCounter++;
-
         if (isEating) {
-            if (frameCounter >= 10) {
+            if (frameCounter >= 5) {
                 frameCounter = 0;
                 frameIndex++;
                 if (frameIndex >= eating.size()) {
                     isEating = false;
+                    hasEatenTrash = false;
                     setAnimationState("walk");
                 }
             }
         } else if (isJumping) {
-            if (frameCounter >= 10) {
+            if (frameCounter >= 4) {
                 frameCounter = 0;
                 frameIndex++;
                 if (frameIndex >= jumpingFrames.size()) {
@@ -146,7 +151,7 @@ public class Kirby {
                 }
             }
         } else if (dx != 0) {
-            if (frameCounter >= 10) {
+            if (frameCounter >= 6) {
                 frameCounter = 0;
                 frameIndex++;
                 if (frameIndex >= walkFrames.size()) {
@@ -209,6 +214,7 @@ public class Kirby {
     public void startEating() {
         if (!isEating) {
             isEating = true;
+            hasEatenTrash = true;
             setAnimationState("eat");
             frameIndex = 0;
             frameCounter = 0;
@@ -218,19 +224,20 @@ public class Kirby {
     // Getters and setters for positions, states, health, etc.
     public int getX() { return x; }
     public int getY() { return y; }
+    public int getHighScore() { return highScore; }
     public int getMaxJumps(){ return maxJumps;}
     public int getScore() { return score; }
-    public boolean isJumping() { return isJumping; }
-    public boolean isEating() { return isEating; }
+    public int getEatingFrameCount() {return eating.size();}
     public int getHealth() { return health; }
     public int getJumpCount() { return jumpCount; }
     public String getAnimationState() { return animationState; }
-    public int getWorldX() { return worldX; }
+    public boolean isEating() { return isEating; }
     public void setWorldX(int worldX) { this.worldX = worldX; }
     public void setX(int newX) { x = newX; }
     public void setY(int newY) { y = newY; }
     public void setPosition(int newX, int newY) { x = newX; y = newY; }
     public void setDx(int newDx) { dx = newDx; }
+    public void setHighScore(int score) {highScore = score;}
 
     public int getWidth() {
         BufferedImage frame = null;
@@ -251,6 +258,10 @@ public class Kirby {
 
     public void collectTrash(boolean isExplosive) {
         if (isExplosive) {
+            score -= 100;
+            if (score < 0) {
+                score = 0;
+            }
             takeDamage(10);
         } else {
             score += 100;
@@ -261,7 +272,9 @@ public class Kirby {
     public void takeDamage(int amount) {
         if (damageCooldown == 0) {
             health -= amount;
-            if (health < 0) health = 0;
+            if (health < 0) {
+                health = 0;
+            }
             damageCooldown = DAMAGE_COOLDOWN_TIME;  // reset cooldown
         }
     }
@@ -271,6 +284,38 @@ public class Kirby {
             damageCooldown--;
         }
     }
+
+    public void saveHighScore() {
+        try (FileWriter writer = new FileWriter("highscore.txt")) {
+            writer.write(String.valueOf(highScore));
+        } catch (IOException e) {
+            System.out.println("Failed to save high score: " + e.getMessage());
+        }
+    }
+
+    public void loadHighScore() {
+        File file = new File("highscore.txt");
+        if (file.exists()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String line = reader.readLine();
+                highScore = Integer.parseInt(line.trim());
+            } catch (IOException | NumberFormatException e) {
+                System.out.println("Failed to load high score: " + e.getMessage());
+                highScore = 0;
+            }
+        } else {
+            highScore = 0;
+        }
+    }
+
+    public void resetHighScore() {
+        try (PrintWriter pw = new PrintWriter("highscore.txt")) {
+            pw.print("0");
+        } catch (IOException e) {
+            System.out.println("Failed to reset high score: " + e.getMessage());
+        }
+    }
+
 
     public void resetJump() {
         jumpCount = 0;
@@ -286,10 +331,6 @@ public class Kirby {
         frameCounter = 0;
     }
 
-    public void setFacingRight(boolean facingRight) {
-        this.facingRight = facingRight;
-    }
-
     public void resetHealth() {
         health = 100;
     }
@@ -301,4 +342,9 @@ public class Kirby {
     public void resetState() {
         animationState = "walk";
     }
+
+    public void setHasEatenTrash(boolean val) {
+        hasEatenTrash = val;
+    }
+
 }

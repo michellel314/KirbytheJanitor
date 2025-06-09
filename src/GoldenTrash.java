@@ -7,10 +7,13 @@ import java.io.IOException;
 public class GoldenTrash {
     private int worldX;
     private int y;
-    private int explosionFlashFrames = 0;
+    private int smokeTimer = 0;
+    private final int smokeDuration = 60;
     private BufferedImage image;
     private BufferedImage explodedImage;
     private boolean isExplosive;
+    private boolean wasEaten = false;
+    private boolean showPuff = false;
 
     public GoldenTrash(int worldX, int y) {
         this.worldX = worldX;
@@ -18,40 +21,64 @@ public class GoldenTrash {
         this.isExplosive = Math.random() < 0.3;
 
         try {
-                image = ImageIO.read(new File("src/Visuals/Explosion.png"));
+                explodedImage = ImageIO.read(new File("src/Visuals/Explosion.png"));
                 image = ImageIO.read(new File("src/Visuals/goldenTrash.png"));
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void triggerExplosion() {
-        isExplosive = true;
-        explosionFlashFrames = 10; // Flash for 10 frames
-    }
-
-    public void update() {
-        if (explosionFlashFrames > 0) {
-            explosionFlashFrames--;
+    public void eat(){
+        wasEaten = true;
+        if(isExplosive){
+            showPuff = true;
+            smokeTimer = smokeDuration;
         }
+    }
+    public void update() {
+        if(showPuff){
+            smokeTimer--;
+            if(smokeTimer <= 0){
+                showPuff = false;
+            }
+        }
+    }
+    public void startSmoke(){
+        showPuff = true;
+        smokeTimer = smokeDuration;
     }
 
     public void draw(Graphics g, int cameraX) {
-        BufferedImage currentImage = (isExplosive && explosionFlashFrames % 2 == 0) ?
-                explodedImage : image;
-        g.drawImage(currentImage, worldX - cameraX, y, null);
+        if(!wasEaten){
+            g.drawImage(image, worldX - cameraX, y, null);
+        } else if (showPuff){
+            if ((smokeTimer / 5) % 2 == 0) {  // flicker on/off every 5 frames
+                g.drawImage(explodedImage, worldX - cameraX, y, null);
+            }
+        }
     }
+
+    public void setWasEaten(boolean eaten){
+        wasEaten = eaten;
+    }
+
     public boolean isExplosive() {
         return isExplosive;
     }
 
+    public boolean wasEaten(){
+        return wasEaten;
+    }
+
+    public boolean isShowingPuff(){
+        return showPuff;
+    }
+    public boolean isVisible(){
+        return !wasEaten || showPuff;
+    }
     public int getWorldX() { return worldX; }
     public int getY() { return y; }
     public int getWidth() { return image.getWidth(); }
     public int getHeight() { return image.getHeight(); }
     public void setWorldX(int newWorldX) { this.worldX = newWorldX; }
-
-    public int getExplosionFrames(){
-        return explosionFlashFrames;
-    }
 }

@@ -89,6 +89,15 @@ public class Panel extends JPanel implements Runnable, KeyListener {
             t.update();
         }
 
+        for (int i = 0; i < trashList.size(); i++) {
+            GoldenTrash t = trashList.get(i);
+            if (t.wasEaten() && !t.isShowingPuff()) {
+                trashList.remove(i);
+                i--;
+                respawnOneTrashAtCheckpoint();
+            }
+        }
+
         kirby.updateDamageCooldown();
 
         int dx = 0;
@@ -155,11 +164,16 @@ public class Panel extends JPanel implements Runnable, KeyListener {
 
             cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
 
+            if (cameraX < (currentCheckpoint - 1) * 800) {
+                cameraX = (currentCheckpoint - 1) * 800;
+            }
+
             // Update Kirby position on screen
             kirby.setPosition(kirbyScreenX, kirby.getY());
         }
 
-        if (cameraX == currentCheckpoint * 800) {
+        if (cameraX >= currentCheckpoint * 800) {
+            cameraX = currentCheckpoint * 800;
             isLoadingCheckpoint = false;
         }
 
@@ -176,8 +190,13 @@ public class Panel extends JPanel implements Runnable, KeyListener {
 
         // Game over condition
         if (kirby.getHealth() <= 0) {
+            if (kirby.getScore() > kirby.getHighScore()) {
+                kirby.setHighScore(kirby.getScore());
+                kirby.saveHighScore();
+            }
             gameState = "GAME_OVER";
         }
+
     }
 
     // Respawn trash in the range of the checkpoint background
@@ -218,20 +237,15 @@ public class Panel extends JPanel implements Runnable, KeyListener {
             int dy = Math.abs(kirby.getY() - t.getY());
 
             if (dx < 50 && dy < 50 && kirby.getAnimationState().equals("eat")) {
-                if (t.isExplosive()) {
-//                    t.triggerExplosion(); // Start flash effect
-                    if (!kirby.vacuum.resistExplosion()) {
+                if (t.isExplosive() && !t.wasEaten()) {
+                    if(!kirby.vacuum.resistExplosion()){
                         kirby.takeDamage(10);
                     }
-//                    // Remove after flash completes
-//                    if (t.getExplosionFrames() <= 0) {
-//                        trashList.remove(i);
-//                        i--;
-//                    }
-                    trashList.remove(i);
-                    i--;
-                    respawnOneTrashAtCheckpoint();
-                } else {
+
+                    kirby.collectTrash(true);
+                    t.setWasEaten(true);
+                    t.startSmoke();
+                } else if (!t.isExplosive()){
                     kirby.collectTrash(false);
                     trashCollectedForCheckpoint++;
                     trashList.remove(i);
@@ -320,6 +334,10 @@ public class Panel extends JPanel implements Runnable, KeyListener {
             g.setFont(new Font("SansSerif", Font.BOLD, 30));
             g.setColor(Color.pink);
             g.drawString("Kirby the Janitor", 270, 200);
+
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("SansSerif", Font.BOLD, 24));
+            g.drawString("High Score: " + kirby.getHighScore(), 290, 50);
 
         } else if (gameState.equals("PLAYING")) {
             // Draw backgrounds horizontally offset by cameraX
