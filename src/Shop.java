@@ -15,9 +15,9 @@ public class Shop {
 
     private int vacuumTier;
     private int vacuumUpgradeCost;
-    private int cakeCost = 3000;
+    private int cakeCost = 1200;
     private int cakePurchasedCount = 0;
-    private final int maxCakePurchases = 2;
+    private final int maxCakePurchases = 3;
 
 
     public Shop(Kirby kirby, Vacuum vacuum, int points){
@@ -25,7 +25,7 @@ public class Shop {
         this.vacuum = vacuum;
         this.points = points;
         this.vacuumTier = vacuum.getTier();
-        this.vacuumUpgradeCost = 1000;  // Starting cost for upgrade
+        this.vacuumUpgradeCost = 300;  // Starting cost for upgrade
 
         try {
             shopBackground = ImageIO.read(new File("src/Shop/SHOP_BACKGROUND.jpg"));
@@ -36,10 +36,13 @@ public class Shop {
         }
     }
 
+    public int getPoints(){
+        return points;
+    }
 
     public void render (Graphics g){
         g.drawImage(shopBackground, 0, 0, null);
-        g.drawImage(vacuumImage,150, 200, null);
+        g.drawImage(vacuumImage,100, 200, null);
         g.setColor(Color.WHITE);
         g.drawString("Vacuum Tier: " + vacuumTier, 150, 250);
         if (vacuumTier < 4) {
@@ -56,5 +59,38 @@ public class Shop {
         // Draw player points
         g.drawString("Points: " + points, 10, 20);
 
+    }
+
+    public void updatePoints (int newPoints){
+        this.points = newPoints;
+    }
+
+    public void handleClick(int mouseX, int mouseY){
+
+    }
+
+
+    private void buyOrUpgradeVacuum(){
+        if(vacuumTier >= 4){
+            return;
+        }
+
+        if(points >= vacuumUpgradeCost){
+            points -= vacuumUpgradeCost;
+            vacuumTier++;
+            vacuum = new Vacuum(vacuumTier);
+            kirby.setVacuum(vacuum);
+            vacuumUpgradeCost *= 2;
+        }
+    }
+
+    private void buyCake(){
+        if(cakePurchasedCount >= maxCakePurchases){
+            if(points >= cakeCost){
+                points -= cakeCost;
+                cakePurchasedCount++;
+                kirby.restoreHealth(50);
+            }
+        }
     }
 }

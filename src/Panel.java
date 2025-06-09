@@ -3,12 +3,14 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
-public class Panel extends JPanel implements Runnable, KeyListener {
+public class Panel extends JPanel implements Runnable, KeyListener, MouseListener {
     private ArrayList<GoldenTrash> trashList = new ArrayList<>();
     private ArrayList<BufferedImage> backgroundList = new ArrayList<>();
     private BufferedImage homescreen;
@@ -32,6 +34,9 @@ public class Panel extends JPanel implements Runnable, KeyListener {
     private final int KIRBY_SCREEN_X_MIN = 100;
     private final int KIRBY_SCREEN_X_MAX = WIDTH - 100;
     private boolean isLoadingCheckpoint = false;
+
+    private Shop shop;
+    private boolean inShop = false;
 
     public Panel() {
         kirby = new Kirby(200, 300);
@@ -72,6 +77,11 @@ public class Panel extends JPanel implements Runnable, KeyListener {
             repaint();
         });
         timer.start();
+    }
+
+    public void openShop(){
+        inShop = true;
+        shop = new Shop(kirby, kirby.getVacuum(), kirby.getScore());
     }
 
     public void update() {
@@ -376,6 +386,9 @@ public class Panel extends JPanel implements Runnable, KeyListener {
             }
 
             kirby.draw(g);
+            if(inShop){
+                shop.render(g);
+            }
 
         } else if (gameState.equals("GAME_OVER")) {
             g.setColor(Color.BLACK);
@@ -451,5 +464,34 @@ public class Panel extends JPanel implements Runnable, KeyListener {
     @Override
     public void run() {
         // Required by Runnable, not used
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        if(inShop){
+            shop.handleClick(e.getX(), e.getY());
+        } else {
+
+        }
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {
+
+    }
+
+    @Override
+    public void mouseExited(MouseEvent e) {
+
     }
 }

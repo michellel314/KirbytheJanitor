@@ -227,7 +227,7 @@ public class Kirby {
     public int getHighScore() { return highScore; }
     public int getMaxJumps(){ return maxJumps;}
     public int getScore() { return score; }
-    public int getEatingFrameCount() {return eating.size();}
+    public Vacuum getVacuum(){return vacuum;}
     public int getHealth() { return health; }
     public int getJumpCount() { return jumpCount; }
     public String getAnimationState() { return animationState; }
@@ -256,9 +256,13 @@ public class Kirby {
         return 77; // Default fallback width
     }
 
+    public boolean resistExplosion(){
+        return vacuum.resistExplosion();
+    }
+
     public void collectTrash(boolean isExplosive) {
         if (isExplosive) {
-            score -= 100;
+            score -= 50;
             if (score < 0) {
                 score = 0;
             }
@@ -345,6 +349,14 @@ public class Kirby {
 
     public void setHasEatenTrash(boolean val) {
         hasEatenTrash = val;
+    }
+
+    public void setVacuum(Vacuum v){
+        vacuum = v;
+    }
+
+    public void restoreHealth(int h){
+        health += h;
     }
 
 }
