@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.IOException;
+
 public class Shop {
     private int points;
     private Kirby kirby;
@@ -19,13 +20,22 @@ public class Shop {
     private int cakePurchasedCount = 0;
     private final int maxCakePurchases = 3;
 
+    // Positions and sizes
+    private final int vacuumX = 100, vacuumY = 150;
+    private final int cakeX = 400, cakeY = 150;
+    private final int itemSize = 200;
+    private final int buttonWidth = 150, buttonHeight = 40;
 
-    public Shop(Kirby kirby, Vacuum vacuum, int points){
+    // Feedback message
+    private String message = "";
+    private long messageTime = 0;
+
+    public Shop(Kirby kirby, Vacuum vacuum, int points) {
         this.kirby = kirby;
         this.vacuum = vacuum;
         this.points = points;
         this.vacuumTier = vacuum.getTier();
-        this.vacuumUpgradeCost = 300;  // Starting cost for upgrade
+        this.vacuumUpgradeCost = 300;
 
         try {
             shopBackground = ImageIO.read(new File("src/Shop/SHOP_BACKGROUND.jpg"));
@@ -36,61 +46,104 @@ public class Shop {
         }
     }
 
-    public int getPoints(){
-        return points;
-    }
-
-    public void render (Graphics g){
-        g.drawImage(shopBackground, 0, 0, null);
-        g.drawImage(vacuumImage,100, 200, null);
-        g.setColor(Color.WHITE);
-        g.drawString("Vacuum Tier: " + vacuumTier, 150, 250);
-        if (vacuumTier < 4) {
-            g.drawString("Upgrade Cost: " + vacuumUpgradeCost, 150, 300);
-        } else {
-            g.drawString("Max Tier Reached", 150, 300);
-        }
-
-        // Draw cake with cost and purchased count
-        g.drawImage(cakeImage, 300, 200, null);
-        g.drawString("Cake Cost: " + cakeCost, 300, 250);
-        g.drawString("Purchased: " + cakePurchasedCount + "/" + maxCakePurchases, 300, 300);
-
-        // Draw player points
-        g.drawString("Points: " + points, 10, 20);
-
-    }
-
-    public void updatePoints (int newPoints){
+    public void updatePoints(int newPoints) {
         this.points = newPoints;
     }
 
-    public void handleClick(int mouseX, int mouseY){
-
+    public int getPoints() {
+        return points;
     }
 
+    public void setKirby(Kirby kirby) {
+        this.kirby = kirby;
+    }
 
-    private void buyOrUpgradeVacuum(){
-        if(vacuumTier >= 4){
-            return;
+    public void setVacuum(Vacuum vacuum) {
+        this.vacuum = vacuum;
+    }
+
+    public void render(Graphics g) {
+        g.drawImage(shopBackground, 0, 0, null);
+        g.setFont(new Font("Arial", Font.BOLD, 16));
+        g.setColor(Color.WHITE);
+        g.drawString("Points: " + kirby.getScore(), 20, 30);
+
+        // --- VACUUM ---
+        g.drawImage(vacuumImage, vacuumX, vacuumY, itemSize, itemSize, null);
+
+        // Draw Vacuum Buy Button
+        g.setColor(Color.DARK_GRAY);
+        g.fillRect(vacuumX, vacuumY + itemSize + 10, buttonWidth, buttonHeight);
+        g.setColor(Color.WHITE);
+        g.drawString("Upgrade Vacuum", vacuumX + 10, vacuumY + itemSize + 35);
+
+        // Draw Vacuum Cost/Status
+        String vacuumStatus = (vacuumTier < 4) ?
+                "Upgrade Cost: " + vacuumUpgradeCost : "Max Tier Reached";
+        g.drawString("Vacuum Tier: " + vacuumTier, vacuumX, vacuumY + itemSize + 70);
+        g.drawString(vacuumStatus, vacuumX, vacuumY + itemSize + 90);
+
+        // --- CAKE ---
+        g.drawImage(cakeImage, cakeX, cakeY, itemSize, itemSize, null);
+
+        // Draw Cake Buy Button
+        g.setColor(Color.DARK_GRAY);
+        g.fillRect(cakeX + 30, cakeY + itemSize + 10, buttonWidth, buttonHeight);
+        g.setColor(Color.WHITE);
+        g.drawString("Buy Cake", cakeX + 30, cakeY + itemSize + 35);
+
+        // Draw Cake Cost/Status
+        g.drawString("Cake Cost: " + cakeCost, cakeX + 30, cakeY + itemSize + 70);
+        g.drawString("Purchased: " + cakePurchasedCount + "/" + maxCakePurchases, cakeX + 30, cakeY + itemSize + 90);
+
+        // Draw message if recent
+        if (System.currentTimeMillis() - messageTime < 2000 && !message.isEmpty()) {
+            g.setColor(Color.YELLOW);
+            g.drawString(message, 220, 400);
+        }
+    }
+
+    public void handleClick(int mouseX, int mouseY) {
+        // Vacuum Button
+        if (mouseX >= vacuumX && mouseX <= vacuumX + buttonWidth &&
+                mouseY >= vacuumY + itemSize + 10 && mouseY <= vacuumY + itemSize + 10 + buttonHeight) {
+            buyOrUpgradeVacuum();
         }
 
-        if(points >= vacuumUpgradeCost){
+        // Cake Button
+        if (mouseX >= cakeX && mouseX <= cakeX + buttonWidth &&
+                mouseY >= cakeY + itemSize + 10 && mouseY <= cakeY + itemSize + 10 + buttonHeight) {
+            buyCake();
+        }
+    }
+
+    private void buyOrUpgradeVacuum() {
+        if (vacuumTier >= 4) {
+            message = "Max vacuum tier reached!";
+        } else if (points >= vacuumUpgradeCost) {
             points -= vacuumUpgradeCost;
             vacuumTier++;
             vacuum = new Vacuum(vacuumTier);
             kirby.setVacuum(vacuum);
             vacuumUpgradeCost *= 2;
+            message = "Vacuum upgraded!";
+        } else {
+            message = "Not enough points!";
         }
+        messageTime = System.currentTimeMillis();
     }
 
-    private void buyCake(){
-        if(cakePurchasedCount >= maxCakePurchases){
-            if(points >= cakeCost){
-                points -= cakeCost;
-                cakePurchasedCount++;
-                kirby.restoreHealth(50);
-            }
+    private void buyCake() {
+        if (cakePurchasedCount >= maxCakePurchases) {
+            message = "Max cake limit reached!";
+        } else if (points >= cakeCost) {
+            points -= cakeCost;
+            cakePurchasedCount++;
+            kirby.restoreHealth(50);
+            message = "Kirby healed!";
+        } else {
+            message = "Not enough points!";
         }
+        messageTime = System.currentTimeMillis();
     }
 }

@@ -35,9 +35,23 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
     private final int KIRBY_SCREEN_X_MAX = WIDTH - 100;
     private boolean isLoadingCheckpoint = false;
 
-    private Shop shop;
+    private BufferedImage shopIcon;
+    private int shopIconX = 700, shopIconY = 50;
+    private int shopIconWidth = 80;
+    private int shopIconHeight = 80;
     private boolean inShop = false;
+    private Shop shop;
+    // Inventory toggle and state
+    private boolean inventoryOpen = false;
+    private int hoveredSlot = -1; // -1 means no slot hovered
 
+    // Inventory position & sizing
+    private final int invX = 100;  // X position for inventory box (adjust as needed)
+    private final int invY = 50;   // Y position above Kirby
+    private final int slotSize = 32;
+    private final int slotPadding = 10;
+    // Your vacuum inventory, 3 slots
+    private Vacuum[] vacuumInventory = new Vacuum[3];
     public Panel() {
         kirby = new Kirby(200, 300);
         kirby.loadWalkingFrames("src/Visuals", 4);
@@ -45,9 +59,12 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
         kirby.loadJumpingFrames("src/Jumping_Animation", 5);
         checkpointsUnlocked[0] = true;
         checkpointMessage = "Area 1 Unlocked! Collect 5 trash";
+        shop = new Shop(kirby, kirby.getVacuum(), kirby.getScore());
+        vacuumInventory[0] = new Vacuum(1);  // Example: starting vacuum tier 1
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);
         addKeyListener(this);
+        addMouseListener(this);
         setLayout(null);
 
         start = new JButton("Start Game");
@@ -68,6 +85,7 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
             backgroundList.add(ImageIO.read(new File("src/Visuals/Forest.jpg")));
             backgroundList.add(ImageIO.read(new File("src/Visuals/Sky.jpg")));
             backgroundList.add(ImageIO.read(new File("src/Visuals/Sky_2.jpg")));
+            shopIcon = ImageIO.read(new File("src/Shop/ShopIcon.png"));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -84,11 +102,58 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
         shop = new Shop(kirby, kirby.getVacuum(), kirby.getScore());
     }
 
+    public void drawInventory(Graphics g) {
+        if (!inventoryOpen) return;
+
+        for (int i = 0; i < vacuumInventory.length; i++) {
+            int x = invX + i * (slotSize + slotPadding);
+            int y = invY;
+
+            // Draw slot background
+            g.setColor(Color.LIGHT_GRAY);
+            g.fillRect(x, y, slotSize, slotSize);
+
+            // Draw slot border
+            g.setColor(Color.BLACK);
+            g.drawRect(x, y, slotSize, slotSize);
+
+            // Draw vacuum info or empty slot text
+            if (vacuumInventory[i] != null) {
+                g.setColor(Color.BLACK);
+                g.drawString("Vac T" + vacuumInventory[i].getTier(), x + 4, y + slotSize / 2 + 5);
+                // You can replace this with drawing your vacuum PNG here
+            } else {
+                g.setColor(Color.DARK_GRAY);
+                g.drawString("Empty", x + 4, y + slotSize / 2 + 5);
+            }
+        }
+
+        // Tooltip when hovering on a vacuum slot with a vacuum
+        if (hoveredSlot >= 0 && vacuumInventory[hoveredSlot] != null) {
+            String tip = "Tier: " + vacuumInventory[hoveredSlot].getTier();
+            int tipX = invX + hoveredSlot * (slotSize + slotPadding);
+            int tipY = invY - 22;  // Tooltip above slot
+
+            g.setColor(new Color(255, 255, 210));
+            g.fillRoundRect(tipX, tipY, 60, 20, 10, 10);
+
+            g.setColor(Color.BLACK);
+            g.drawRoundRect(tipX, tipY, 60, 20, 10, 10);
+
+            g.drawString(tip, tipX + 8, tipY + 15);
+        }
+    }
+
+
     public void update() {
         if (!gameState.equals("PLAYING")) {
             return;
         }
 
+        if (inShop) {
+            // Pause game updates when in shop
+            return;
+        }
         // Countdown checkpoint message timer
         if (messageTimer > 0) {
             messageTimer--;
@@ -350,43 +415,46 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
             g.drawString("High Score: " + kirby.getHighScore(), 290, 50);
 
         } else if (gameState.equals("PLAYING")) {
-            // Draw backgrounds horizontally offset by cameraX
-            int totalWidth = 0;
-            for (BufferedImage bg : backgroundList) {
-                totalWidth += bg.getWidth();
-            }
-            // Calculate start position to draw backgrounds
-            int drawX = -cameraX;
-            int i = 0;
-            while (drawX < WIDTH) {
-                if (i >= backgroundList.size()) i = 0; // loop backgrounds if needed
-                BufferedImage bg = backgroundList.get(i);
-                g.drawImage(bg, drawX, 0, null);
-                drawX += bg.getWidth();
-                i++;
-            }
+            if(!inShop){
+                // Draw backgrounds horizontally offset by cameraX
+                int totalWidth = 0;
+                for (BufferedImage bg : backgroundList) {
+                    totalWidth += bg.getWidth();
+                }
+                // Calculate start position to draw backgrounds
+                int drawX = -cameraX;
+                int i = 0;
+                while (drawX < WIDTH) {
+                    if (i >= backgroundList.size()) i = 0; // loop backgrounds if needed
+                    BufferedImage bg = backgroundList.get(i);
+                    g.drawImage(bg, drawX, 0, null);
+                    drawX += bg.getWidth();
+                    i++;
+                }
 
-            // Draw trash relative to cameraX
-            for (GoldenTrash t : trashList) {
-                t.draw(g, cameraX);
-            }
-            g.setColor(Color.WHITE);
-            g.setFont(new Font("Arial", Font.BOLD, 16));
-            g.drawString("Area " + (currentCheckpoint+1) + ": " +
-                    trashCollectedForCheckpoint + "/" +
-                    trashRequirements[currentCheckpoint], 20, 30);
-            g.drawString("Health: " + kirby.getHealth(), 20, 50);
-            g.drawString("Score: " + kirby.getScore(), 20, 70);
-            // Checkpoint unlock message (center screen)
-            if (messageTimer > 0) {
-                g.setColor(Color.YELLOW);
-                g.setFont(new Font("Arial", Font.BOLD, 24));
-                int msgWidth = g.getFontMetrics().stringWidth(checkpointMessage);
-                g.drawString(checkpointMessage, getWidth()/2 - msgWidth/2, getHeight()/2);
-            }
+                // Draw trash relative to cameraX
+                for (GoldenTrash t : trashList) {
+                    t.draw(g, cameraX);
+                }
+                g.setColor(Color.WHITE);
+                g.setFont(new Font("Arial", Font.BOLD, 16));
+                g.drawString("Area " + (currentCheckpoint+1) + ": " +
+                        trashCollectedForCheckpoint + "/" +
+                        trashRequirements[currentCheckpoint], 20, 30);
+                g.drawString("Health: " + kirby.getHealth(), 20, 50);
+                g.drawString("Score: " + kirby.getScore(), 20, 70);
+                // Checkpoint unlock message (center screen)
+                if (messageTimer > 0) {
+                    g.setColor(Color.YELLOW);
+                    g.setFont(new Font("Arial", Font.BOLD, 24));
+                    int msgWidth = g.getFontMetrics().stringWidth(checkpointMessage);
+                    g.drawString(checkpointMessage, getWidth()/2 - msgWidth/2, getHeight()/2);
+                }
 
-            kirby.draw(g);
-            if(inShop){
+                kirby.draw(g);
+                g.drawImage(shopIcon, shopIconX, shopIconY, shopIconWidth, shopIconHeight, null);
+                drawInventory(g);
+            } else {
                 shop.render(g);
             }
 
@@ -406,6 +474,7 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
     public void resetGame() {
         cameraX = 0;
         currentCheckpoint = 0;
+        inShop = false;
         kirby.setPosition(200, 500);
         kirby.resetHealth();
         kirby.resetScore();
@@ -424,6 +493,9 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
 
     @Override
     public void keyPressed(KeyEvent e) {
+        if (inShop) {
+            return;  // Disable controls in shop
+        }
         int key = e.getKeyCode();
 
         if (gameState.equals("PLAYING")) {
@@ -438,6 +510,10 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
             } else if (key == KeyEvent.VK_E) {
                 if (!kirby.isEating()) {
                     kirby.startEating();
+                }
+            } else if (key == KeyEvent.VK_S){
+                if(inShop){
+                    inShop = false;
                 }
             }
         } else if (gameState.equals("GAME_OVER")) {
@@ -468,16 +544,24 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
 
     @Override
     public void mouseClicked(MouseEvent e) {
-        if(inShop){
-            shop.handleClick(e.getX(), e.getY());
-        } else {
 
-        }
     }
 
     @Override
     public void mousePressed(MouseEvent e) {
+        int mouseX = e.getX();
+        int mouseY = e.getY();
 
+        if (!inShop && gameState.equals("PLAYING")) {
+            // If the player clicks on the shop icon
+            if (mouseX >= shopIconX && mouseX <= shopIconX + shopIconWidth &&
+                    mouseY >= shopIconY && mouseY <= shopIconY + shopIconHeight) {
+                inShop = true;
+            }
+        } else if (inShop) {
+            // Pass click to Shop class
+            shop.handleClick(mouseX, mouseY);
+        }
     }
 
     @Override
