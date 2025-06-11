@@ -7,6 +7,9 @@ import java.util.ArrayList;
 import javax.imageio.ImageIO;
 
 public class Kirby {
+    private ArrayList<BufferedImage> eating;
+    private ArrayList<BufferedImage> walkFrames;
+    private ArrayList<BufferedImage> jumpingFrames;
     private int health;
     private int dx = 0;
     private int x;
@@ -14,24 +17,20 @@ public class Kirby {
     private int y;
     private int frameIndex = 0;
     private int highScore = 0;
+    private int velocityY = 0;
+    private int score;
+    private int damageCooldown = 0;
+    private int frameCounter = 0;
+    private String animationState = "walk";
     private boolean facingRight = true;  // Use only this for direction
     private boolean isEating = false;
     private boolean hasEatenTrash = false;
-    private int score;
-    private String animationState = "walk";
-    private ArrayList<BufferedImage> eating;
-    private ArrayList<BufferedImage> walkFrames;
-    private ArrayList<BufferedImage> jumpingFrames;
-    private int frameCounter = 0;
-    public Vacuum vacuum;
-    private int velocityY = 0;
     private boolean isJumping = false;
     private final int GROUND_Y = 495;
     private final int JUMP_STRENGTH = -15;
-    private final double GRAVITY = 1;
-    private int damageCooldown = 0;
     private final int DAMAGE_COOLDOWN_TIME = 10;
-
+    private final double GRAVITY = 1;
+    public Vacuum vacuum;
     // Double jump variables
     private int jumpCount = 0;
     private final int maxJumps = 2;
@@ -57,7 +56,7 @@ public class Kirby {
                 BufferedImage frame = ImageIO.read(new File(fileName));
                 walkFrames.add(frame);
             } catch (IOException e) {
-                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
         }
     }
@@ -70,7 +69,7 @@ public class Kirby {
                 BufferedImage frame = ImageIO.read(new File(fileName));
                 eating.add(frame);
             } catch (IOException e){
-                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
         }
     }
@@ -83,7 +82,7 @@ public class Kirby {
                 BufferedImage frame = ImageIO.read(new File(fileName));
                 jumpingFrames.add(frame);
             } catch (IOException e) {
-                System.out.println(e.getMessage());
+               e.printStackTrace();
             }
         }
     }
@@ -192,13 +191,6 @@ public class Kirby {
             }
         }
     }
-    public void upgradeVacuum() {
-        if (score >= 500 && vacuum.getTier() < 3) {
-            score -= 500;
-            vacuum = new Vacuum(vacuum.getTier() + 1);
-            System.out.println("Vacuum upgraded to tier " + vacuum.getTier());
-        }
-    }
 
     public void jump() {
         if (jumpCount < maxJumps && !isEating) {
@@ -220,25 +212,6 @@ public class Kirby {
             frameCounter = 0;
         }
     }
-
-    // Getters and setters for positions, states, health, etc.
-    public int getX() { return x; }
-    public int getY() { return y; }
-    public int getHighScore() { return highScore; }
-    public int getMaxJumps(){ return maxJumps;}
-    public int getScore() { return score; }
-    public Vacuum getVacuum(){return vacuum;}
-    public int getHealth() { return health; }
-    public int getJumpCount() { return jumpCount; }
-    public String getAnimationState() { return animationState; }
-    public boolean isEating() { return isEating; }
-    public void setWorldX(int worldX) { this.worldX = worldX; }
-    public void setX(int newX) { x = newX; }
-    public void setY(int newY) { y = newY; }
-    public void setPosition(int newX, int newY) { x = newX; y = newY; }
-    public void setDx(int newDx) { dx = newDx; }
-    public void setScore(int newScore){ score = newScore;}
-    public void setHighScore(int score) {highScore = score;}
 
     public int getWidth() {
         BufferedImage frame = null;
@@ -294,7 +267,7 @@ public class Kirby {
         try (FileWriter writer = new FileWriter("highscore.txt")) {
             writer.write(String.valueOf(highScore));
         } catch (IOException e) {
-            System.out.println("Failed to save high score: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -305,7 +278,7 @@ public class Kirby {
                 String line = reader.readLine();
                 highScore = Integer.parseInt(line.trim());
             } catch (IOException | NumberFormatException e) {
-                System.out.println("Failed to load high score: " + e.getMessage());
+                e.printStackTrace();
                 highScore = 0;
             }
         } else {
@@ -317,7 +290,7 @@ public class Kirby {
         try (PrintWriter pw = new PrintWriter("highscore.txt")) {
             pw.print("0");
         } catch (IOException e) {
-            System.out.println("Failed to reset high score: " + e.getMessage());
+           e.printStackTrace();
         }
     }
 
@@ -339,15 +312,12 @@ public class Kirby {
     public void resetHealth() {
         health = 100;
     }
-
     public void resetScore() {
         score = 0;
     }
-
     public void resetState() {
         animationState = "walk";
     }
-
     public void restoreHealth(int h){
         health += h;
         if(health > 100){
@@ -355,4 +325,22 @@ public class Kirby {
         }
     }
 
+    // Getters and setters for positions, states, health, etc.
+    public int getX() { return x; }
+    public int getY() { return y; }
+    public int getHighScore() { return highScore; }
+    public int getMaxJumps(){ return maxJumps;}
+    public int getScore() { return score; }
+    public int getHealth() { return health; }
+    public int getJumpCount() { return jumpCount; }
+    public Vacuum getVacuum(){return vacuum;}
+    public String getAnimationState() { return animationState; }
+    public boolean isEating() { return isEating; }
+    public void setWorldX(int worldX) { this.worldX = worldX; }
+    public void setX(int newX) { x = newX; }
+    public void setY(int newY) { y = newY; }
+    public void setPosition(int newX, int newY) { x = newX; y = newY; }
+    public void setDx(int newDx) { dx = newDx; }
+    public void setScore(int newScore){ score = newScore;}
+    public void setHighScore(int score) {highScore = score;}
 }

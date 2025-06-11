@@ -9,38 +9,9 @@ import java.util.ArrayList;
 public class Panel extends JPanel implements Runnable, KeyListener, MouseListener, MouseMotionListener {
     private ArrayList<GoldenTrash> trashList = new ArrayList<>();
     private ArrayList<BufferedImage> backgroundList = new ArrayList<>();
-    private BufferedImage homescreen;
-    private final int WIDTH = 800;
-    private final int HEIGHT = 600;
-    private boolean leftPressed = false;
-    private boolean rightPressed = false;
-    private Kirby kirby;
-    private int cameraX = 0;
-    private String gameState = "HOME";
-    private JButton start;
-    private boolean[] checkpointsUnlocked = new boolean[10]; // Tracks which backgrounds are accessible
-    private int currentCheckpoint = 0;
-    private int trashCollectedForCheckpoint = 0;
-    private final int[] trashRequirements = {5, 10, 15, 20, 25, 25, 25, 25, 25, 25};
-    private String checkpointMessage = "";
-    private int messageTimer = 0;
-    // Constants for checkpoint size and Kirby screen X clamp
-    private final int CHECKPOINT_WIDTH = 0; // Will calculate dynamically from backgrounds
-    private final int KIRBY_SCREEN_X_MIN = 100;
-    private final int KIRBY_SCREEN_X_MAX = WIDTH - 100;
-    private boolean isLoadingCheckpoint = false;
     private BufferedImage shopIcon;
     private BufferedImage vacuum;
-    private int shopIconX = 700, shopIconY = 10;
-    private int shopIconWidth = 80;
-    private int shopIconHeight = 80;
-    private boolean inShop = false;
-    private Shop shop;
-    private boolean showInventory = false;
-    private Rectangle[] inventoryBoxes = new Rectangle[3];
-    private int inventoryX = 100, inventoryY = 100, slotSize = 64, slotSpacing = 10;
-    private boolean hoveringVacuumSlot = false;
-
+    private BufferedImage homescreen;
     private BufferedImage w;
     private BufferedImage a;
     private BufferedImage s;
@@ -48,9 +19,37 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
     private BufferedImage e;
     private BufferedImage j;
     private BufferedImage r;
-    private Music backgroundMusic;
+    private int cameraX = 0;
+    private int currentCheckpoint = 0;
+    private int trashCollectedForCheckpoint = 0;
+    private int shopIconX = 700, shopIconY = 10;
+    private int shopIconWidth = 80;
+    private int shopIconHeight = 80;
+    private int messageTimer = 0;
+    private int inventoryX = 100, inventoryY = 100, slotSize = 64, slotSpacing = 10;
+    private String gameState = "HOME";
+    private boolean leftPressed = false;
+    private boolean rightPressed = false;
+    private boolean hoveringVacuumSlot = false;
+    private boolean isLoadingCheckpoint = false;
+    private boolean inShop = false;
+    private boolean showInventory = false;
     private boolean musicStarted;
     private boolean musicStopped;
+    private final int WIDTH = 800;
+    private final int HEIGHT = 600;
+    // Constants for checkpoint size and Kirby screen X clamp
+    private final int CHECKPOINT_WIDTH = 0; // Will calculate dynamically from backgrounds
+    private final int KIRBY_SCREEN_X_MIN = 100;
+    private final int KIRBY_SCREEN_X_MAX = WIDTH - 100;
+    private Kirby kirby;
+    private JButton start;
+    private boolean[] checkpointsUnlocked = new boolean[10]; // Tracks which backgrounds are accessible
+    private final int[] trashRequirements = {5, 10, 15, 20, 25, 25, 25, 25, 25, 25};
+    private String checkpointMessage = "";
+    private Shop shop;
+    private Rectangle[] inventoryBoxes = new Rectangle[3];
+    private Music backgroundMusic;
     public Panel() {
         kirby = new Kirby(200, 300);
         kirby.loadWalkingFrames("src/Visuals", 4);
@@ -250,139 +249,6 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
 
     }
 
-    // Respawn trash in the range of the checkpoint background
-    private void respawnTrashForCheckpoint(int checkpoint) {
-        trashList.clear();
-
-        // Calculate checkpoint horizontal range in world coordinates
-        int startX = currentCheckpoint * WIDTH + 75;
-        int endX = (currentCheckpoint + 1) * WIDTH - 75;
-
-        int trashCount = trashRequirements[checkpoint];
-        int maxAttempts = 200;
-        int spawned = 0;
-
-        while (spawned < trashCount) {
-            boolean placed = false;
-            int attempts = 0;
-
-            while (!placed && attempts < maxAttempts) {
-                attempts++;
-                int newX = startX + (int)(Math.random() * (endX - startX));
-                int newY = (int) (Math.random() * 200 + 300);
-
-                if (!isTooCloseInRange(newX, newY)) {
-                    trashList.add(new GoldenTrash(newX, newY));
-                    placed = true;
-                }
-            }
-            spawned++;
-        }
-    }
-
-    // Check collisions between Kirby and trash
-    private void checkTrashCollision(int kirbyWorldX) {
-        for (int i = 0; i < trashList.size(); i++) {
-            GoldenTrash t = trashList.get(i);
-            int dx = Math.abs(kirbyWorldX - t.getWorldX());
-            int dy = Math.abs(kirby.getY() - t.getY());
-
-            if (dx < 50 && dy < 50 && kirby.getAnimationState().equals("eat")) {
-                if (t.isExplosive() && !t.wasEaten()) {
-                    boolean resisted = kirby.resistExplosion();
-                    if(!resisted){
-                        kirby.takeDamage(10);
-                        kirby.collectTrash(true);
-                    } else {
-                        kirby.collectTrash(false);
-                    }
-
-                    t.setWasEaten(true);
-                    t.startSmoke();
-                } else if (!t.isExplosive()){
-                    kirby.collectTrash(false);
-                    trashCollectedForCheckpoint++;
-                    trashList.remove(i);
-                    i--;
-                    respawnOneTrashAtCheckpoint();
-
-                    if (trashCollectedForCheckpoint >= trashRequirements[currentCheckpoint]) {
-                        unlockNextCheckpoint();
-                    }
-                }
-                break;
-            }
-        }
-    }
-
-    private void unlockNextCheckpoint() {
-        if (currentCheckpoint < checkpointsUnlocked.length - 1) {
-            isLoadingCheckpoint = true;
-            checkpointsUnlocked[currentCheckpoint + 1] = true;
-            currentCheckpoint++;  // Move to next checkpoint
-            trashCollectedForCheckpoint = 0;
-            checkpointMessage = "Area " + (currentCheckpoint + 1) + " Unlocked! Collect " +
-                    trashRequirements[currentCheckpoint] + " trash";
-            messageTimer = 180; // 3 seconds message
-            respawnTrashForCheckpoint(currentCheckpoint);
-        } else {
-            gameState = "GAME_OVER";
-        }
-    }
-
-    // Respawn a single trash in the current checkpoint background range
-    private void respawnOneTrashAtCheckpoint() {
-
-        int startX = currentCheckpoint * WIDTH + 75;
-        int endX = (currentCheckpoint + 1) * WIDTH - 75;
-
-        int maxAttempts = 100;
-        boolean placed = false;
-        while (!placed && maxAttempts > 0) {
-            maxAttempts--;
-            int newX = startX + (int)(Math.random() * (endX - startX));
-            int newY = (int) (Math.random() * 200 + 300);
-
-            if (!isTooCloseInRange(newX, newY)) {
-                trashList.add(new GoldenTrash(newX, newY));
-                placed = true;
-            }
-        }
-    }
-
-    private int getTotalWorldWidth() {
-        int totalWidth = 0;
-        for (BufferedImage bg : backgroundList) {
-            totalWidth += bg.getWidth();
-        }
-        return totalWidth;
-    }
-
-    private int getCheckpointBoundary(int checkpoint) {
-        int bgWidth = backgroundList.get(0).getWidth();
-        return (checkpoint + 1) * bgWidth;
-    }
-
-    // Check if new trash position is too close to existing trash
-    private boolean isTooCloseInRange(int x, int y) {
-        int trashWidth = 75;
-        int trashHeight = 69;
-        Rectangle newBounds = new Rectangle(x, y, trashWidth, trashHeight);
-        for (GoldenTrash existing : trashList) {
-            Rectangle existingBounds = new Rectangle(existing.getWorldX(), existing.getY(), trashWidth, trashHeight);
-            int ex = existing.getWorldX() + 20;
-            int ey = existing.getY() + 20;
-
-            int distX = ex - (x + 20);
-            int distY = ey - (y + 20);
-            double distance = Math.sqrt(distX * distX + distY * distY);
-            if (newBounds.intersects(existingBounds)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -406,7 +272,7 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
             int iconSize = 50;
             int spacingY = 50;
 
-// LEFT COLUMN (W, A, D, E)
+            // LEFT COLUMN (W, A, D, E)
             int leftX = 50;
             int leftY = 240;
 
@@ -430,7 +296,7 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
                 g.drawString("Eat Trash", leftX + iconSize + 10, leftY + 24);
             }
 
-// RIGHT COLUMN (J, S, R)
+            // RIGHT COLUMN (J, S, R)
             int rightX = 490;
             int rightY = 260;
 
@@ -669,5 +535,138 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
             hoveringVacuumSlot = false;
         }
         repaint();
+    }
+
+    // Respawn trash in the range of the checkpoint background
+    private void respawnTrashForCheckpoint(int checkpoint) {
+        trashList.clear();
+
+        // Calculate checkpoint horizontal range in world coordinates
+        int startX = currentCheckpoint * WIDTH + 75;
+        int endX = (currentCheckpoint + 1) * WIDTH - 75;
+
+        int trashCount = trashRequirements[checkpoint];
+        int maxAttempts = 200;
+        int spawned = 0;
+
+        while (spawned < trashCount) {
+            boolean placed = false;
+            int attempts = 0;
+
+            while (!placed && attempts < maxAttempts) {
+                attempts++;
+                int newX = startX + (int)(Math.random() * (endX - startX));
+                int newY = (int) (Math.random() * 200 + 300);
+
+                if (!isTooCloseInRange(newX, newY)) {
+                    trashList.add(new GoldenTrash(newX, newY));
+                    placed = true;
+                }
+            }
+            spawned++;
+        }
+    }
+
+    // Check collisions between Kirby and trash
+    private void checkTrashCollision(int kirbyWorldX) {
+        for (int i = 0; i < trashList.size(); i++) {
+            GoldenTrash t = trashList.get(i);
+            int dx = Math.abs(kirbyWorldX - t.getWorldX());
+            int dy = Math.abs(kirby.getY() - t.getY());
+
+            if (dx < 50 && dy < 50 && kirby.getAnimationState().equals("eat")) {
+                if (t.isExplosive() && !t.wasEaten()) {
+                    boolean resisted = kirby.resistExplosion();
+                    if(!resisted){
+                        kirby.takeDamage(10);
+                        kirby.collectTrash(true);
+                    } else {
+                        kirby.collectTrash(false);
+                    }
+
+                    t.setWasEaten(true);
+                    t.startSmoke();
+                } else if (!t.isExplosive()){
+                    kirby.collectTrash(false);
+                    trashCollectedForCheckpoint++;
+                    trashList.remove(i);
+                    i--;
+                    respawnOneTrashAtCheckpoint();
+
+                    if (trashCollectedForCheckpoint >= trashRequirements[currentCheckpoint]) {
+                        unlockNextCheckpoint();
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    private void unlockNextCheckpoint() {
+        if (currentCheckpoint < checkpointsUnlocked.length - 1) {
+            isLoadingCheckpoint = true;
+            checkpointsUnlocked[currentCheckpoint + 1] = true;
+            currentCheckpoint++;  // Move to next checkpoint
+            trashCollectedForCheckpoint = 0;
+            checkpointMessage = "Area " + (currentCheckpoint + 1) + " Unlocked! Collect " +
+                    trashRequirements[currentCheckpoint] + " trash";
+            messageTimer = 180; // 3 seconds message
+            respawnTrashForCheckpoint(currentCheckpoint);
+        } else {
+            gameState = "GAME_OVER";
+        }
+    }
+
+    // Respawn a single trash in the current checkpoint background range
+    private void respawnOneTrashAtCheckpoint() {
+
+        int startX = currentCheckpoint * WIDTH + 75;
+        int endX = (currentCheckpoint + 1) * WIDTH - 75;
+
+        int maxAttempts = 100;
+        boolean placed = false;
+        while (!placed && maxAttempts > 0) {
+            maxAttempts--;
+            int newX = startX + (int)(Math.random() * (endX - startX));
+            int newY = (int) (Math.random() * 200 + 300);
+
+            if (!isTooCloseInRange(newX, newY)) {
+                trashList.add(new GoldenTrash(newX, newY));
+                placed = true;
+            }
+        }
+    }
+
+    private int getTotalWorldWidth() {
+        int totalWidth = 0;
+        for (BufferedImage bg : backgroundList) {
+            totalWidth += bg.getWidth();
+        }
+        return totalWidth;
+    }
+
+    private int getCheckpointBoundary(int checkpoint) {
+        int bgWidth = backgroundList.get(0).getWidth();
+        return (checkpoint + 1) * bgWidth;
+    }
+
+    // Check if new trash position is too close to existing trash
+    private boolean isTooCloseInRange(int x, int y) {
+        int trashWidth = 75;
+        int trashHeight = 69;
+        Rectangle newBounds = new Rectangle(x, y, trashWidth, trashHeight);
+        for (GoldenTrash existing : trashList) {
+            Rectangle existingBounds = new Rectangle(existing.getWorldX(), existing.getY(), trashWidth, trashHeight);
+            int ex = existing.getWorldX() + 20;
+            int ey = existing.getY() + 20;
+
+            int distX = ex - (x + 20);
+            int distY = ey - (y + 20);
+            double distance = Math.sqrt(distX * distX + distY * distY);
+            if (newBounds.intersects(existingBounds)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

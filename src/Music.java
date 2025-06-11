@@ -19,11 +19,8 @@ public class Music {
                 AudioInputStream ais = AudioSystem.getAudioInputStream(musicFile);
                 clip = AudioSystem.getClip();
                 clip.open(ais);
-            } else {
-                System.out.println("File not found: " + soundURL);
             }
         } catch (Exception e) {
-            System.out.println("Error loading sound: " + e.getMessage());
             e.printStackTrace();
         }
     }
