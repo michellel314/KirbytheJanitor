@@ -40,7 +40,7 @@ public class Kirby {
         health = 100;
         this.x = x;
         this.y = y;
-        vacuum = new Vacuum(1);
+        vacuum = new Vacuum(0);
         score = 0;
         walkFrames = new ArrayList<>();
         eating = new ArrayList<>();
@@ -237,6 +237,7 @@ public class Kirby {
     public void setY(int newY) { y = newY; }
     public void setPosition(int newX, int newY) { x = newX; y = newY; }
     public void setDx(int newDx) { dx = newDx; }
+    public void setScore(int newScore){ score = newScore;}
     public void setHighScore(int score) {highScore = score;}
 
     public int getWidth() {
@@ -262,7 +263,7 @@ public class Kirby {
 
     public void collectTrash(boolean isExplosive) {
         if (isExplosive) {
-            score -= 50;
+            score -= 100;
             if (score < 0) {
                 score = 0;
             }
@@ -347,16 +348,11 @@ public class Kirby {
         animationState = "walk";
     }
 
-    public void setHasEatenTrash(boolean val) {
-        hasEatenTrash = val;
-    }
-
-    public void setVacuum(Vacuum v){
-        vacuum = v;
-    }
-
     public void restoreHealth(int h){
         health += h;
+        if(health > 100){
+            health = 100;
+        }
     }
 
 }

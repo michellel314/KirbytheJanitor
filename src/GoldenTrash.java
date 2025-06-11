@@ -18,7 +18,7 @@ public class GoldenTrash {
     public GoldenTrash(int worldX, int y) {
         this.worldX = worldX;
         this.y = y;
-        this.isExplosive = Math.random() < 0.3;
+        this.isExplosive = Math.random() < 0.2;
 
         try {
                 explodedImage = ImageIO.read(new File("src/Visuals/Explosion.png"));

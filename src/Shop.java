@@ -1,14 +1,11 @@
 import java.awt.*;
-import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.IOException;
 
 public class Shop {
-    private int points;
     private Kirby kirby;
-    private Vacuum vacuum;
 
     private BufferedImage shopBackground;
     private BufferedImage vacuumImage;
@@ -30,12 +27,10 @@ public class Shop {
     private String message = "";
     private long messageTime = 0;
 
-    public Shop(Kirby kirby, Vacuum vacuum, int points) {
+    public Shop(Kirby kirby, Vacuum vacuum) {
         this.kirby = kirby;
-        this.vacuum = vacuum;
-        this.points = points;
         this.vacuumTier = vacuum.getTier();
-        this.vacuumUpgradeCost = 300;
+        this.vacuumUpgradeCost = 400;
 
         try {
             shopBackground = ImageIO.read(new File("src/Shop/SHOP_BACKGROUND.jpg"));
@@ -44,22 +39,6 @@ public class Shop {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public void updatePoints(int newPoints) {
-        this.points = newPoints;
-    }
-
-    public int getPoints() {
-        return points;
-    }
-
-    public void setKirby(Kirby kirby) {
-        this.kirby = kirby;
-    }
-
-    public void setVacuum(Vacuum vacuum) {
-        this.vacuum = vacuum;
     }
 
     public void render(Graphics g) {
@@ -78,9 +57,9 @@ public class Shop {
         g.drawString("Upgrade Vacuum", vacuumX + 10, vacuumY + itemSize + 35);
 
         // Draw Vacuum Cost/Status
-        String vacuumStatus = (vacuumTier < 4) ?
+        String vacuumStatus = (vacuumTier <= 5) ?
                 "Upgrade Cost: " + vacuumUpgradeCost : "Max Tier Reached";
-        g.drawString("Vacuum Tier: " + vacuumTier, vacuumX, vacuumY + itemSize + 70);
+        g.drawString("Vacuum Tier: " + (vacuumTier + 1), vacuumX, vacuumY + itemSize + 70);
         g.drawString(vacuumStatus, vacuumX, vacuumY + itemSize + 90);
 
         // --- CAKE ---
@@ -99,7 +78,7 @@ public class Shop {
         // Draw message if recent
         if (System.currentTimeMillis() - messageTime < 2000 && !message.isEmpty()) {
             g.setColor(Color.YELLOW);
-            g.drawString(message, 220, 400);
+            g.drawString(message, 270, 450);
         }
     }
 
@@ -118,13 +97,14 @@ public class Shop {
     }
 
     private void buyOrUpgradeVacuum() {
-        if (vacuumTier >= 4) {
+        int currentScore = kirby.getScore();
+
+        if (vacuumTier > 5) {
             message = "Max vacuum tier reached!";
-        } else if (points >= vacuumUpgradeCost) {
-            points -= vacuumUpgradeCost;
+        } else if (currentScore >= vacuumUpgradeCost) {
+            kirby.setScore(currentScore - vacuumUpgradeCost);  // Deduct points from Kirby
             vacuumTier++;
-            vacuum = new Vacuum(vacuumTier);
-            kirby.setVacuum(vacuum);
+            kirby.getVacuum().setTier(vacuumTier);
             vacuumUpgradeCost *= 2;
             message = "Vacuum upgraded!";
         } else {
@@ -133,11 +113,14 @@ public class Shop {
         messageTime = System.currentTimeMillis();
     }
 
+
     private void buyCake() {
+        int currentScore = kirby.getScore();
+
         if (cakePurchasedCount >= maxCakePurchases) {
             message = "Max cake limit reached!";
-        } else if (points >= cakeCost) {
-            points -= cakeCost;
+        } else if (currentScore >= cakeCost) {
+            kirby.setScore(currentScore - cakeCost);  // Deduct points from Kirby
             cakePurchasedCount++;
             kirby.restoreHealth(50);
             message = "Kirby healed!";
@@ -145,5 +128,12 @@ public class Shop {
             message = "Not enough points!";
         }
         messageTime = System.currentTimeMillis();
+    }
+
+    public void resetCosts(){
+        vacuumUpgradeCost = 400;
+        cakeCost = 1200;
+        cakePurchasedCount = 0;
+        vacuumTier = 0;
     }
 }
