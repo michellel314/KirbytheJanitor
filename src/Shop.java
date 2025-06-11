@@ -78,7 +78,7 @@ public class Shop {
         // Draw message if recent
         if (System.currentTimeMillis() - messageTime < 2000 && !message.isEmpty()) {
             g.setColor(Color.YELLOW);
-            g.drawString(message, 270, 450);
+            g.drawString(message, 270, 460);
         }
     }
 
@@ -99,7 +99,7 @@ public class Shop {
     private void buyOrUpgradeVacuum() {
         int currentScore = kirby.getScore();
 
-        if (vacuumTier > 5) {
+        if (vacuumTier + 1 > 5) {
             message = "Max vacuum tier reached!";
         } else if (currentScore >= vacuumUpgradeCost) {
             kirby.setScore(currentScore - vacuumUpgradeCost);  // Deduct points from Kirby

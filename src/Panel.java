@@ -47,7 +47,10 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
     private BufferedImage d;
     private BufferedImage e;
     private BufferedImage j;
-
+    private BufferedImage r;
+    private Music backgroundMusic;
+    private boolean musicStarted;
+    private boolean musicStopped;
     public Panel() {
         kirby = new Kirby(200, 300);
         kirby.loadWalkingFrames("src/Visuals", 4);
@@ -56,7 +59,6 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
         checkpointsUnlocked[0] = true;
         checkpointMessage = "Area 1 Unlocked! Collect 5 trash";
         shop = new Shop(kirby, kirby.getVacuum());
-        System.out.println(kirby.getVacuum().getTier());
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);
         addKeyListener(this);
@@ -65,7 +67,7 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
         setLayout(null);
 
         start = new JButton("Start Game");
-        start.setBounds(310, 275, 150, 50);
+        start.setBounds(315, 275, 150, 50);
         add(start);
 
         start.addActionListener(e -> {
@@ -73,6 +75,10 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
             gameState = "PLAYING";
             resetGame();
             requestFocusInWindow();
+            if (backgroundMusic != null && !musicStarted) {
+                backgroundMusic.playLoop();
+                musicStarted = true;
+            }
         });
 
         try {
@@ -95,6 +101,11 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
             a = ImageIO.read(new File("src/Visuals/aKey.png"));
             s = ImageIO.read(new File("src/Visuals/sKey.png"));
             d = ImageIO.read(new File("src/Visuals/dKey.png"));
+            e = ImageIO.read(new File("src/Visuals/eKey.png"));
+            j = ImageIO.read(new File("src/Visuals/jKey.png"));
+            r = ImageIO.read(new File("src/Visuals/rKey.png"));
+
+            backgroundMusic = new Music("src/Music/KirbySong.wav");
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -115,6 +126,7 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
         if (inShop) {
             return;
         }
+
         // Countdown checkpoint message timer
         if (messageTimer > 0) {
             messageTimer--;
@@ -256,7 +268,7 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
 
             while (!placed && attempts < maxAttempts) {
                 attempts++;
-                int newX = (int) (Math.random() * (endX - startX)) + (currentCheckpoint * WIDTH);
+                int newX = startX + (int)(Math.random() * (endX - startX));
                 int newY = (int) (Math.random() * 200 + 300);
 
                 if (!isTooCloseInRange(newX, newY)) {
@@ -317,6 +329,7 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
             gameState = "GAME_OVER";
         }
     }
+
     // Respawn a single trash in the current checkpoint background range
     private void respawnOneTrashAtCheckpoint() {
 
@@ -352,15 +365,18 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
 
     // Check if new trash position is too close to existing trash
     private boolean isTooCloseInRange(int x, int y) {
-        int minDistance = 50;
+        int trashWidth = 75;
+        int trashHeight = 69;
+        Rectangle newBounds = new Rectangle(x, y, trashWidth, trashHeight);
         for (GoldenTrash existing : trashList) {
+            Rectangle existingBounds = new Rectangle(existing.getWorldX(), existing.getY(), trashWidth, trashHeight);
             int ex = existing.getWorldX() + 20;
             int ey = existing.getY() + 20;
 
             int distX = ex - (x + 20);
             int distY = ey - (y + 20);
             double distance = Math.sqrt(distX * distX + distY * distY);
-            if (distance < minDistance) {
+            if (newBounds.intersects(existingBounds)) {
                 return true;
             }
         }
@@ -375,11 +391,72 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
             g.drawImage(homescreen, 0, 0, WIDTH, HEIGHT, null);
             g.setFont(new Font("SansSerif", Font.BOLD, 30));
             g.setColor(Color.pink);
-            g.drawString("Kirby the Janitor", 270, 200);
+            g.drawString("Kirby the Janitor", 265, 200);
             g.setColor(Color.WHITE);
             g.setFont(new Font("SansSerif", Font.BOLD, 24));
             g.drawString("High Score: " + kirby.getHighScore(), 290, 50);
+            // Instruction box background (optional for clarity)
+            g.setColor(new Color(0, 0, 0, 150)); // semi-transparent black
+            g.fillRoundRect(30, 230, 280, 220, 15, 15); // Left
+            g.fillRoundRect(470, 240, 290, 200, 15, 15); // Right
+
+            g.setFont(new Font("SansSerif", Font.PLAIN, 18));
+            g.setColor(Color.WHITE);
+
+            int iconSize = 50;
+            int spacingY = 50;
+
+// LEFT COLUMN (W, A, D, E)
+            int leftX = 50;
+            int leftY = 240;
+
+            if (w != null) {
+                g.drawImage(w, leftX, leftY, iconSize, iconSize, null);
+                g.drawString("Jump", leftX + iconSize + 10, leftY + 24);
+                leftY += spacingY;
+            }
+            if (a != null) {
+                g.drawImage(a, leftX, leftY, iconSize, iconSize, null);
+                g.drawString("Move Left", leftX + iconSize + 10, leftY + 24);
+                leftY += spacingY;
+            }
+            if (d != null) {
+                g.drawImage(d, leftX, leftY, iconSize, iconSize, null);
+                g.drawString("Move Right", leftX + iconSize + 10, leftY + 24);
+                leftY += spacingY;
+            }
+            if (e != null) {
+                g.drawImage(e, leftX, leftY, iconSize, iconSize, null);
+                g.drawString("Eat Trash", leftX + iconSize + 10, leftY + 24);
+            }
+
+// RIGHT COLUMN (J, S, R)
+            int rightX = 490;
+            int rightY = 260;
+
+            if (j != null) {
+                g.drawImage(j, rightX, rightY, iconSize, iconSize, null);
+                g.drawString("Toggle Inventory", rightX + iconSize + 10, rightY + 24);
+                rightY += spacingY;
+            }
+            if (s != null) {
+                g.drawImage(s, rightX, rightY, iconSize, iconSize, null);
+                g.drawString("Exit Shop", rightX + iconSize + 10, rightY + 24);
+                rightY += spacingY;
+            }
+            if (r != null) {
+                g.drawImage(r, rightX, rightY, iconSize, iconSize, null);
+                g.drawString("Restart (Game Over)", rightX + iconSize + 10, rightY + 24);
+            }
+            backgroundMusic.stop();
+            musicStarted = false;
+            musicStopped = false;
         } else if (gameState.equals("PLAYING")) {
+            if (!musicStarted) {
+                backgroundMusic.playLoop();
+                musicStarted = true;
+                musicStopped = false;
+            }
             if(!inShop){
                 // Draw backgrounds horizontally offset by cameraX
                 int totalWidth = 0;
@@ -433,7 +510,6 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
 
                     // Draw vacuum in first slot
                     if (i == 0) {
-                        System.out.println(kirby.getVacuum().getTier());
                         if (kirby.getVacuum().getTier() > 0){
                             g.drawImage(vacuum, x + 5, inventoryY + 5, slotSize - 10, slotSize - 10, null);
                         }
@@ -453,6 +529,11 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
             }
 
         } else if (gameState.equals("GAME_OVER")) {
+            if (!musicStopped) {
+                backgroundMusic.stop();
+                musicStopped = true;
+                musicStarted = false;
+            }
             g.setColor(Color.BLACK);
             g.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -521,6 +602,15 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
                     kirby.setHighScore(kirby.getScore());
                     kirby.saveHighScore();
                 }
+
+                musicStarted = false;
+                musicStopped = false;
+
+                if (backgroundMusic != null) {
+                    backgroundMusic.stop();
+                    musicStarted = false; // allow replaying next time
+                }
+
                 resetGame();
                 gameState = "HOME";
                 add(start);
