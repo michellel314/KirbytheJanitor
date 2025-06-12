@@ -52,9 +52,9 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
     private Music backgroundMusic;
     public Panel() {
         kirby = new Kirby(200, 300);
-        kirby.loadWalkingFrames("src/Visuals", 4);
-        kirby.loadEatingFrames("src/Eating_Animation", 5);
-        kirby.loadJumpingFrames("src/Jumping_Animation", 5);
+        kirby.loadWalkingFrames("src\\Visuals", 4);
+        kirby.loadEatingFrames("src\\Eating_Animation", 5);
+        kirby.loadJumpingFrames("src\\Jumping_Animation", 5);
         checkpointsUnlocked[0] = true;
         checkpointMessage = "Area 1 Unlocked! Collect 5 trash";
         shop = new Shop(kirby, kirby.getVacuum());
@@ -81,30 +81,30 @@ public class Panel extends JPanel implements Runnable, KeyListener, MouseListene
         });
 
         try {
-            homescreen = ImageIO.read(new File("src/Visuals/HOMESCREEN.png"));
-            backgroundList.add(ImageIO.read(new File("src/Visuals/Dreamscape.jpg")));
-            backgroundList.add(ImageIO.read(new File("src/Visuals/campfire.jpg")));
-            backgroundList.add(ImageIO.read(new File("src/Visuals/Forest.jpg")));
-            backgroundList.add(ImageIO.read(new File("src/Visuals/Sky.jpg")));
-            backgroundList.add(ImageIO.read(new File("src/Visuals/Sky_2.jpg")));
+            homescreen = ImageIO.read(new File("src\\Visuals\\HOMESCREEN.png"));
+            backgroundList.add(ImageIO.read(new File("src\\Visuals\\Dreamscape.jpg")));
+            backgroundList.add(ImageIO.read(new File("src\\Visuals\\campfire.jpg")));
+            backgroundList.add(ImageIO.read(new File("src\\Visuals\\Forest.jpg")));
+            backgroundList.add(ImageIO.read(new File("src\\Visuals\\Sky.jpg")));
+            backgroundList.add(ImageIO.read(new File("src\\Visuals\\Sky_2.jpg")));
             // loop over background for levels 5-10
-            backgroundList.add(ImageIO.read(new File("src/Visuals/Dreamscape.jpg")));
-            backgroundList.add(ImageIO.read(new File("src/Visuals/campfire.jpg")));
-            backgroundList.add(ImageIO.read(new File("src/Visuals/Forest.jpg")));
-            backgroundList.add(ImageIO.read(new File("src/Visuals/Sky.jpg")));
-            backgroundList.add(ImageIO.read(new File("src/Visuals/Sky_2.jpg")));
-            shopIcon = ImageIO.read(new File("src/Shop/ShopIcon.png"));
-            vacuum = ImageIO.read(new File("src/Shop/Vacuum.png"));
+            backgroundList.add(ImageIO.read(new File("src\\Visuals\\Dreamscape.jpg")));
+            backgroundList.add(ImageIO.read(new File("src\\Visuals\\campfire.jpg")));
+            backgroundList.add(ImageIO.read(new File("src\\Visuals\\Forest.jpg")));
+            backgroundList.add(ImageIO.read(new File("src\\Visuals\\Sky.jpg")));
+            backgroundList.add(ImageIO.read(new File("src\\Visuals\\Sky_2.jpg")));
+            shopIcon = ImageIO.read(new File("src\\Shop\\ShopIcon.png"));
+            vacuum = ImageIO.read(new File("src\\Shop\\Vacuum.png"));
 
-            w = ImageIO.read(new File("src/Visuals/wKey.png"));
-            a = ImageIO.read(new File("src/Visuals/aKey.png"));
-            s = ImageIO.read(new File("src/Visuals/sKey.png"));
-            d = ImageIO.read(new File("src/Visuals/dKey.png"));
-            e = ImageIO.read(new File("src/Visuals/eKey.png"));
-            j = ImageIO.read(new File("src/Visuals/jKey.png"));
-            r = ImageIO.read(new File("src/Visuals/rKey.png"));
+            w = ImageIO.read(new File("src\\Visuals\\wKey.png"));
+            a = ImageIO.read(new File("src\\Visuals\\aKey.png"));
+            s = ImageIO.read(new File("src\\Visuals\\sKey.png"));
+            d = ImageIO.read(new File("src\\Visuals\\dKey.png"));
+            e = ImageIO.read(new File("src\\Visuals\\eKey.png"));
+            j = ImageIO.read(new File("src\\Visuals\\jKey.png"));
+            r = ImageIO.read(new File("src\\Visuals\\rKey.png"));
 
-            backgroundMusic = new Music("src/Music/KirbySong.wav");
+            backgroundMusic = new Music("src\\Music\\KirbySong.wav");
 
         } catch (IOException e) {
             e.printStackTrace();

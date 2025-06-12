@@ -33,9 +33,9 @@ public class Shop {
         this.vacuumUpgradeCost = 400;
 
         try {
-            shopBackground = ImageIO.read(new File("src/Shop/SHOP_BACKGROUND.jpg"));
-            vacuumImage = ImageIO.read(new File("src/Shop/Vacuum.png"));
-            cakeImage = ImageIO.read(new File("src/Shop/StrawberryCake.png"));
+            shopBackground = ImageIO.read(new File("src\\Shop\\SHOP_BACKGROUND.jpg"));
+            vacuumImage = ImageIO.read(new File("src\\Shop\\Vacuum.png"));
+            cakeImage = ImageIO.read(new File("src\\Shop\\StrawberryCake.png"));
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -51,7 +51,7 @@ public class Kirby {
     public void loadWalkingFrames(String folderpath, int frameCount) {
         walkFrames.clear();
         for (int i = 0; i < frameCount; i++) {
-            String fileName = String.format("%s/tile%03d.png", folderpath, i);
+            String fileName = String.format("%s\\tile%03d.png", folderpath, i);
             try {
                 BufferedImage frame = ImageIO.read(new File(fileName));
                 walkFrames.add(frame);
@@ -64,7 +64,7 @@ public class Kirby {
     public void loadEatingFrames(String folderPath, int frameCount){
         eating.clear();
         for(int i = 0; i < frameCount; i++){
-            String fileName = String.format("%s/tile00%d.png", folderPath, i);
+            String fileName = String.format("%s\\tile00%d.png", folderPath, i);
             try{
                 BufferedImage frame = ImageIO.read(new File(fileName));
                 eating.add(frame);
@@ -77,7 +77,7 @@ public class Kirby {
     public void loadJumpingFrames(String folderPath, int frameCount){
         jumpingFrames.clear();
         for (int i = 0; i < frameCount; i++) {
-            String fileName = String.format("%s/tile00%d.png", folderPath, i);
+            String fileName = String.format("%s\\tile00%d.png", folderPath, i);
             try {
                 BufferedImage frame = ImageIO.read(new File(fileName));
                 jumpingFrames.add(frame);
